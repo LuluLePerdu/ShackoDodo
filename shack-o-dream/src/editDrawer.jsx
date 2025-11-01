@@ -7,12 +7,17 @@ import Drawer from '@mui/material/Drawer';
 import { MdClose } from 'react-icons/md';
 import TextareaAutosize from "@mui/material/TextareaAutosize";
 
-export default function EditDrawer({ open, onClose, data }) {
+export default function EditDrawer({ open, onClose, selectedRow }) {
     const handleSubmit = (e) => {
         e.preventDefault();
     }
 
-    var jsonData = JSON.stringify(data, null, 2);
+    const [textValue, setTextValue] = React.useState('');
+    React.useEffect(() => {
+        if (selectedRow) {
+            setTextValue(JSON.stringify(selectedRow, null, 2));
+        }
+    }, [selectedRow]);
 
     const DrawerHeader = styled('div')(({ theme }) => ({
         display: 'flex',
@@ -57,7 +62,7 @@ export default function EditDrawer({ open, onClose, data }) {
                                 fontFamily: '"Cascadia Code"'// Change font family
                             },
                         }}
-                        value={jsonData}
+                        value={textValue} onChange={(e) => setTextValue(e.target.value)}
                     />
                 </form>
                 <Button color="primary" type="submit" form="edit-request-form">Modifier</Button>

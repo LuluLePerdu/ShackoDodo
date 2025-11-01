@@ -8,6 +8,7 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import EditDrawer from "./editDrawer.jsx";
+import Connection from "./Connection.jsx";
 
 const columns = [
     { id: 'id', label: 'ID', minWidth: 170 },
@@ -46,6 +47,8 @@ export default function StickyHeadTable() {
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [selectedRow, setSelectedRow] = React.useState(null);
     const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -117,7 +120,7 @@ export default function StickyHeadTable() {
             <EditDrawer
                 open={drawerOpen}
                 onClose={handleDrawerClose}
-                data={selectedRow ?? ''}
+                selectedRow={selectedRow ?? ''}
             />
         </Paper>
     );
