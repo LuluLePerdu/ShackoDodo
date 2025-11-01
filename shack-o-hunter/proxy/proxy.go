@@ -103,9 +103,7 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 		host = strings.Split(host, ":")[0]
 	}
 
-	// Filter Mozilla/Firefox domains
 	shouldFilter := shouldFilterDomain(host)
-
 	if !shouldFilter {
 		log.Printf("HTTPS CONNECT: %s", req.Host)
 	}
@@ -141,101 +139,56 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 		return
 	}
 
-	var body []byte
-	if httpsReq.Body != nil {
-		body, _ = io.ReadAll(httpsReq.Body)
-		httpsReq.Body.Close()
-	}
+	httpsReq.Host = req.Host
 
-	fullURL := "https://" + req.Host + httpsReq.URL.Path
-	if httpsReq.URL.RawQuery != "" {
-		fullURL += "?" + httpsReq.URL.RawQuery
-	}
-
-	// Only log and send data if not from Mozilla/Firefox
-	if !shouldFilter {
-		requestData := RequestData{
-			Method:  httpsReq.Method,
-			URL:     fullURL,
-			Headers: httpsReq.Header,
-			Body:    string(body),
-		}
-
-		jsonData, err := json.MarshalIndent(requestData, "", "  ")
-		if err != nil {
-			log.Printf("Error marshaling JSON: %v", err)
-		} else {
-			fmt.Println("===== REQUETE HTTPS =====")
-			fmt.Println(string(jsonData))
-			fmt.Println()
-		}
-	}
-
-	proxyReq, err := http.NewRequest(httpsReq.Method, fullURL, bytes.NewReader(body))
-	if err != nil {
-		log.Printf("Erreur création requête: %v", err)
-		return
-	}
-
-	proxyReq.Header = httpsReq.Header.Clone()
-	proxyReq.Header.Del("Proxy-Connection")
-	proxyReq.Header.Del("Connection")
-
-	resp, err := directClient.Do(proxyReq)
-	if err != nil {
-		log.Printf("Erreur envoi requête: %v", err)
-		tlsClientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		return
-	}
-	defer resp.Body.Close()
-
-	if !shouldFilter {
-		log.Printf("Réponse HTTPS: %d %s (Host: %s)", resp.StatusCode, resp.Status, req.Host)
-	}
-
-	tlsClientConn.Write([]byte(fmt.Sprintf("HTTP/%d.%d %d %s\r\n",
-		resp.ProtoMajor, resp.ProtoMinor, resp.StatusCode, resp.Status)))
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			tlsClientConn.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, value)))
-		}
-	}
-	tlsClientConn.Write([]byte("\r\n"))
-
-	written, _ := io.Copy(tlsClientConn, resp.Body)
-	if !shouldFilter {
-		log.Printf("Body HTTPS transféré: %d bytes", written)
-	}
+	processRequest(tlsClientConn, httpsReq, true)
 }
 
-// handleHTTP handles regular HTTP requests
-func handleHTTP(clientConn net.Conn, req *http.Request) {
+// processRequest handles the common logic for both HTTP and HTTPS requests
+func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	var body []byte
 	if req.Body != nil {
 		body, _ = io.ReadAll(req.Body)
 		req.Body.Close()
 	}
 
-	if req.URL.Scheme == "" {
-		if req.TLS != nil {
-			req.URL.Scheme = "https"
-		} else {
-			req.URL.Scheme = "http"
+	fullURL := req.URL.String()
+	if isHTTPS {
+		fullURL = "https://" + req.Host + req.URL.Path
+		if req.URL.RawQuery != "" {
+			fullURL += "?" + req.URL.RawQuery
 		}
-	}
-	if req.URL.Host == "" {
-		req.URL.Host = req.Host
+	} else {
+		if req.URL.Scheme == "" {
+			if req.TLS != nil {
+				req.URL.Scheme = "https"
+			} else {
+				req.URL.Scheme = "http"
+			}
+		}
+		if req.URL.Host == "" {
+			req.URL.Host = req.Host
+		}
+		fullURL = req.URL.String()
 	}
 
 	// Check if domain should be filtered
-	shouldFilter := shouldFilterDomain(req.Host)
+	host := req.Host
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+	shouldFilter := shouldFilterDomain(host)
 
 	if !shouldFilter {
-		log.Printf("HTTP Request: %s %s", req.Method, req.URL.String())
+		if isHTTPS {
+			log.Printf("HTTPS Request: %s %s", req.Method, fullURL)
+		} else {
+			log.Printf("HTTP Request: %s %s", req.Method, fullURL)
+		}
 	}
 
-	if req.URL.String() == "http://localhost:5000/login" {
+	// Specific logic for HTTP login request
+	if !isHTTPS && req.URL.String() == "http://localhost:5000/login" {
 		if req.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 			form, err := url.ParseQuery(string(body))
 			if err == nil {
@@ -249,11 +202,10 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 		}
 	}
 
-	// Only log and send data if not from Mozilla/Firefox
 	if !shouldFilter {
 		requestData := RequestData{
 			Method:  req.Method,
-			URL:     req.URL.String(),
+			URL:     fullURL,
 			Headers: req.Header,
 			Body:    string(body),
 		}
@@ -267,13 +219,17 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 		if err != nil {
 			log.Printf("Error marshaling JSON: %v", err)
 		} else {
-			fmt.Println("===== REQUETE HTTP =====")
+			if isHTTPS {
+				fmt.Println("===== REQUETE HTTPS ====")
+			} else {
+				fmt.Println("===== REQUETE HTTP ====")
+			}
 			fmt.Println(string(jsonData))
 			websocket.BroadcastChannel <- jsonData
 		}
 	}
 
-	proxyReq, err := http.NewRequest(req.Method, req.URL.String(), bytes.NewReader(body))
+	proxyReq, err := http.NewRequest(req.Method, fullURL, bytes.NewReader(body))
 	if err != nil {
 		log.Printf("Erreur lors de la création de la requête: %v", err)
 		clientConn.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n\r\n"))
@@ -310,6 +266,11 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 	if !shouldFilter {
 		log.Printf("Body transféré: %d bytes", written)
 	}
+}
+
+// handleHTTP handles regular HTTP requests
+func handleHTTP(clientConn net.Conn, req *http.Request) {
+	processRequest(clientConn, req, false)
 }
 
 func Start() {

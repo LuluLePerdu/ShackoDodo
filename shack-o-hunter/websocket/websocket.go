@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -69,6 +70,38 @@ func (h *Hub) run() {
 	}
 }
 
+func (c *Client) readPump() {
+	defer func() {
+		c.hub.unregister <- c
+		c.conn.Close()
+	}()
+	for {
+		_, message, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+		}
+
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("error unmarshalling message: %v", err)
+			continue
+		}
+
+		switch msg.Type {
+		case "pause":
+			if pause, ok := msg.Data.(bool); ok {
+				config.GetInstance().SetPause(pause)
+				log.Printf("Set pause to %v", pause)
+			} else {
+				log.Printf("Invalid data for pause type: %v", msg.Data)
+			}
+		}
+	}
+}
+
 func (c *Client) writePump() {
 	defer func() {
 		c.conn.Close()
@@ -94,6 +127,7 @@ func serveWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client.hub.register <- client
 
 	go client.writePump()
+	go client.readPump()
 }
 
 func Start() {
