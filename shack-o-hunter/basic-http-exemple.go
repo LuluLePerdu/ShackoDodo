@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -61,7 +60,9 @@ func makeFirefoxProfile() (string, error) {
 		`user_pref("network.proxy.http", "127.0.0.1");`,
 		`user_pref("network.proxy.http_port", 8181);`,
 		`user_pref("network.proxy.no_proxies_on", "");`,
-		// Optional: ensure HTTPS proxy unset so HTTPS won’t try CONNECT via us
+		`user_pref("network.proxy.bypass_on_local", false);`,
+		`user_pref("network.proxy.allow_hijacking_localhost", true);`,
+		// keep HTTPS unset if you only handle plain HTTP:
 		`user_pref("network.proxy.ssl", "");`,
 		`user_pref("network.proxy.ssl_port", 0);`,
 	}
@@ -98,10 +99,6 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Println("BODY  : (vide)")
 	}
-
-	// Pause
-	fmt.Print("Entrée pour continuer...")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
 
 	// Clean hop-by-hop/proxy headers
 	cleanHeaders := r.Header.Clone()
