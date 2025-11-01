@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"proxy-interceptor/cert"
+	"proxy-interceptor/config"
 	"proxy-interceptor/websocket"
 	"strings"
 	"time"
@@ -313,14 +314,17 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 
 func Start() {
 	go func() {
-		listener, err := net.Listen("tcp", "127.0.0.1:8181")
+		cfg := config.GetInstance()
+		addr := fmt.Sprintf("127.0.0.1:%d", cfg.ProxyPort)
+
+		listener, err := net.Listen("tcp", addr)
 		if err != nil {
 			log.Fatalf("Erreur lors du démarrage du proxy: %v", err)
 		}
 		defer listener.Close()
 
 		log.Println("Proxy HTTP/HTTPS Interceptor with MITM")
-		log.Println("En attente de connexions...")
+		log.Printf("En attente de connexions sur %s...", addr)
 
 		for {
 			conn, err := listener.Accept()

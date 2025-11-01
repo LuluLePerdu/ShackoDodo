@@ -1,8 +1,10 @@
 package websocket
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"proxy-interceptor/config"
 
 	"github.com/gorilla/websocket"
 )
@@ -101,7 +103,9 @@ func Start() {
 		serveWebsocket(&hub, w, r)
 	})
 	go func() {
-		log.Println("WebSocket server on 127.0.0.1:8182")
-		log.Fatal(http.ListenAndServe("127.0.0.1:8182", wsMux))
+		cfg := config.GetInstance()
+		addr := fmt.Sprintf("127.0.0.1:%d", cfg.WebSocketPort)
+		log.Printf("WebSocket server on %s", addr)
+		log.Fatal(http.ListenAndServe(addr, wsMux))
 	}()
 }

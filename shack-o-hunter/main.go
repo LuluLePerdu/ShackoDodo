@@ -4,6 +4,7 @@ import (
 	"log"
 	"proxy-interceptor/admin"
 	"proxy-interceptor/cert"
+	"proxy-interceptor/config"
 	"proxy-interceptor/firefox"
 	"proxy-interceptor/proxy"
 	"proxy-interceptor/websocket"
@@ -46,9 +47,12 @@ func main() {
 	// Petit délai pour s'assurer que Windows a bien traité le certificat
 	time.Sleep(1 * time.Second)
 
+	// Get config instance
+	cfg := config.GetInstance()
+
 	// Maintenant démarrer le proxy
 	proxy.Start()
-	log.Println("Proxy démarré sur 127.0.0.1:8181")
+	log.Printf("Proxy démarré sur 127.0.0.1:%d", cfg.ProxyPort)
 
 	// Démarrer le WebSocket
 	websocket.Start()
