@@ -7,35 +7,30 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Hub maintains the set of active clients and broadcasts messages to the
-// clients.
+// Hub maintains the set of active clients
 type Hub struct {
-	// Registered clients.
+	// Registered clients
 	clients map[*Client]bool
 
-	// Inbound messages from the clients.
-	broadcast chan []byte
-
-	// Register requests from the clients.
+	// Register requests
 	register chan *Client
 
-	// Unregister requests from clients.
+	// Unregister requests
 	unregister chan *Client
 }
 
-// Client is a middleman between the websocket connection and the hub.
+// Client represent a client connection
 type Client struct {
 	hub *Hub
 
-	// The websocket connection.
+	// Websocket connection
 	conn *websocket.Conn
 
-	// Buffered channel of outbound messages.
+	// Outbound messages
 	send chan []byte
 }
 
 var hub = Hub{
-	broadcast:  make(chan []byte),
 	register:   make(chan *Client),
 	unregister: make(chan *Client),
 	clients:    make(map[*Client]bool),
@@ -47,7 +42,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var RequestChannel = make(chan []byte)
+var BroadcastChannel = make(chan []byte)
 
 func (h *Hub) run() {
 	for {
@@ -59,16 +54,7 @@ func (h *Hub) run() {
 				delete(h.clients, client)
 				close(client.send)
 			}
-		case message := <-h.broadcast:
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
-		case message := <-RequestChannel:
+		case message := <-BroadcastChannel:
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -88,7 +74,6 @@ func (c *Client) writePump() {
 	for {
 		message, ok := <-c.send
 		if !ok {
-			// The hub closed the channel.
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
@@ -97,7 +82,7 @@ func (c *Client) writePump() {
 	}
 }
 
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func serveWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -113,7 +98,7 @@ func Start() {
 	go hub.run()
 	wsMux := http.NewServeMux()
 	wsMux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(&hub, w, r)
+		serveWebsocket(&hub, w, r)
 	})
 	go func() {
 		log.Println("WebSocket server on 127.0.0.1:8182")
