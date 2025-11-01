@@ -13,7 +13,9 @@ func makeFirefoxProfile() (string, error) {
 	root := filepath.Join(os.TempDir(), "ff-proxy-prof")
 
 	// Supprimer le profil existant pour repartir de zéro
-	os.RemoveAll(root)
+	if err := os.RemoveAll(root); err != nil {
+		log.Printf("warning: failed to remove old profile %s: %v", root, err)
+	}
 
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
@@ -79,41 +81,64 @@ func makeFirefoxProfile() (string, error) {
 		"mimeTypes": {},
 		"schemes": {}
 	}`
-	os.WriteFile(filepath.Join(root, "handlers.json"), []byte(handlersJSON), 0o644)
+	if err := os.WriteFile(filepath.Join(root, "handlers.json"), []byte(handlersJSON), 0o644); err != nil {
+		return "", err
+	}
 
-	// Install CA certificate with certutil if available
+	// Install CA certificate with certutil (NSS) into the profile if available
 	if cert.CACertPath != "" && fileExists(cert.CACertPath) {
 		exePath, _ := os.Executable()
 		exeDir := filepath.Dir(exePath)
 
-		certutilPaths := []string{
+		potential := []string{
 			filepath.Join(exeDir, "certutil.exe"),
+			filepath.Join(exeDir, "nss", "bin", "certutil.exe"),
 			`C:\Program Files\Mozilla Firefox\certutil.exe`,
+			`C:\Program Files\Mozilla Firefox\nss\bin\certutil.exe`,
 			`C:\Program Files (x86)\Mozilla Firefox\certutil.exe`,
+			`C:\Program Files (x86)\Mozilla Firefox\nss\bin\certutil.exe`,
+		}
+
+		if p, err := exec.LookPath("certutil.exe"); err == nil {
+			potential = append(potential, p)
 		}
 
 		var certutilPath string
-		for _, path := range certutilPaths {
-			if fileExists(path) {
-				certutilPath = path
+		for _, p := range potential {
+			if fileExists(p) {
+				certutilPath = p
 				break
 			}
 		}
 
 		if certutilPath != "" {
-			cmdInit := exec.Command(certutilPath, "-N", "-d", "sql:"+root, "--empty-password")
-			cmdInit.Run()
+			// Initialize NSS DB (sql:)
+			out, err := exec.Command(certutilPath, "-N", "-d", "sql:"+root, "--empty-password").CombinedOutput()
+			if err != nil {
+				log.Printf("certutil -N failed (%s): %v\n%s", certutilPath, err, out)
+			} else {
+				log.Printf("Initialized NSS DB at %s using %s", root, certutilPath)
+			}
 
-			cmdImport := exec.Command(certutilPath, "-A", "-n", "ShackoDodo Proxy CA",
-				"-t", "C,,", "-i", cert.CACertPath, "-d", "sql:"+root)
-			cmdImport.Run()
+			// Import trusted CA (C,, trusts CA for SSL)
+			out2, err2 := exec.Command(certutilPath, "-A", "-n", "ShackoDodo Proxy CA", "-t", "C,,", "-i", cert.CACertPath, "-d", "sql:"+root).CombinedOutput()
+			if err2 != nil {
+				log.Printf("certutil -A failed (%s): %v\n%s", certutilPath, err2, out2)
+			} else {
+				log.Printf("Imported CA into profile NSS DB")
+			}
+		} else {
+			log.Printf("certutil not found; Firefox profile will rely on security.enterprise_roots.enabled to trust OS store")
 		}
 
-		// Copy CA certificate to profile
-		caCertData, err := os.ReadFile(cert.CACertPath)
-		if err == nil {
+		// Copy CA certificate to profile for convenience
+		if caCertData, err := os.ReadFile(cert.CACertPath); err == nil {
 			caCertDest := filepath.Join(root, "shackododo-ca.crt")
-			os.WriteFile(caCertDest, caCertData, 0o644)
+			if err := os.WriteFile(caCertDest, caCertData, 0o644); err != nil {
+				log.Printf("warning: failed to write CA to profile: %v", err)
+			}
+		} else {
+			log.Printf("warning: failed to read CA cert from %s: %v", cert.CACertPath, err)
 		}
 	}
 
