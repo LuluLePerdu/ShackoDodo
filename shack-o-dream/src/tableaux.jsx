@@ -7,6 +7,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
+import EditDrawer from "./editDrawer.jsx";
 
 const columns = [
     { id: 'id', label: 'ID', minWidth: 170 },
@@ -43,6 +44,8 @@ const rows = [
 export default function StickyHeadTable() {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
+    const [selectedRow, setSelectedRow] = React.useState(null);
+    const [drawerOpen, setDrawerOpen] = React.useState(false);
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -51,6 +54,16 @@ export default function StickyHeadTable() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(+event.target.value);
         setPage(0);
+    };
+
+    const handleRowClick = (row) => {
+        setSelectedRow(row);
+        setDrawerOpen(true);
+    };
+
+    const handleDrawerClose = () => {
+        setDrawerOpen(false);
+        setSelectedRow(null)
     };
 
     return (
@@ -75,7 +88,7 @@ export default function StickyHeadTable() {
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((row) => {
                                 return (
-                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.code}>
+                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.code} onClick={() => handleRowClick(row)}>
                                         {columns.map((column) => {
                                             const value = row[column.id];
                                             return (
@@ -100,6 +113,11 @@ export default function StickyHeadTable() {
                 page={page}
                 onPageChange={handleChangePage}
                 onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+            <EditDrawer
+                open={drawerOpen}
+                onClose={handleDrawerClose}
+                data={selectedRow ?? ''}
             />
         </Paper>
     );
