@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +14,13 @@ import (
 	"strings"
 	"time"
 )
+
+type RequestData struct {
+	Method  string              `json:"method"`
+	URL     string              `json:"url"`
+	Headers map[string][]string `json:"headers"`
+	Body    string              `json:"body"`
+}
 
 var directClient = &http.Client{
 	Transport: &http.Transport{
@@ -88,6 +96,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 	}
 
+	// Hard-coded post update
 	if r.URL.String() == "http://localhost:5000/login" {
 		if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 			// Parse the form data
@@ -107,17 +116,19 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log
-	fmt.Println("===== REQUETE =====")
-	fmt.Println("METHOD :", r.Method)
-	fmt.Println("URL    :", r.URL.String())
-	for k, v := range r.Header {
-		fmt.Printf("  %s: %v\n", k, v)
+	requestData := RequestData{
+		Method:  r.Method,
+		URL:     r.URL.String(),
+		Headers: r.Header,
+		Body:    string(body),
 	}
-	if len(body) > 0 {
-		fmt.Println("BODY  :")
-		fmt.Println(string(body))
+
+	jsonData, err := json.MarshalIndent(requestData, "", "  ")
+	if err != nil {
+		log.Printf("Error marshaling JSON: %v", err)
 	} else {
-		fmt.Println("BODY  : (vide)")
+		fmt.Println("===== REQUETE =====")
+		fmt.Println(string(jsonData))
 	}
 
 	// Clean hop-by-hop/proxy headers
