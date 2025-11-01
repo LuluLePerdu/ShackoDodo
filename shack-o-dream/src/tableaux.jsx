@@ -8,7 +8,6 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import EditDrawer from "./editDrawer.jsx";
-import Connection from "./Connection.jsx";
 
 const columns = [
     { id: 'id', label: 'ID', minWidth: 170 },
@@ -42,12 +41,11 @@ const rows = [
     createData('Brazil', 'BR', 210147125, 8515767),
 ];
 
-export default function StickyHeadTable() {
+export default function StickyHeadTable({items}) {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [selectedRow, setSelectedRow] = React.useState(null);
     const [drawerOpen, setDrawerOpen] = React.useState(false);
-
 
 
     const handleChangePage = (event, newPage) => {
@@ -87,11 +85,11 @@ export default function StickyHeadTable() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {rows
+                        {items
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((row) => {
                                 return (
-                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.code} onClick={() => handleRowClick(row)}>
+                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id} onClick={() => handleRowClick(row)}>
                                         {columns.map((column) => {
                                             const value = row[column.id];
                                             return (
@@ -111,7 +109,7 @@ export default function StickyHeadTable() {
             <TablePagination
                 rowsPerPageOptions={[10, 25, 100]}
                 component="div"
-                count={rows.length}
+                count={items.length}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -120,7 +118,7 @@ export default function StickyHeadTable() {
             <EditDrawer
                 open={drawerOpen}
                 onClose={handleDrawerClose}
-                selectedRow={selectedRow ?? ''}
+                selectedRow={selectedRow != null ? selectedRow.data : ''}
             />
         </Paper>
     );

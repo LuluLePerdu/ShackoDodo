@@ -5,7 +5,6 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Drawer from '@mui/material/Drawer';
 import { MdClose } from 'react-icons/md';
-import TextareaAutosize from "@mui/material/TextareaAutosize";
 
 export default function EditDrawer({ open, onClose, selectedRow }) {
     const handleSubmit = (e) => {

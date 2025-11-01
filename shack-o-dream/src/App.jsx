@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import StickyHeadTable from "./tableaux.jsx";
 import theme from './customTheme.js';
 import { ThemeProvider } from '@mui/material/styles';
+import useWebSocket, {ReadyState} from "react-use-websocket";
 
 function play() {}
 
@@ -16,6 +17,47 @@ function newTab() {}
 
 
 function App() {
+    const WS_URL = `ws://127.0.0.1:8182/ws`;
+    const { sendMessage, lastMessage, readyState } = useWebSocket(WS_URL);
+    const [items, setItems] = React.useState([]);
+
+    React.useEffect(() => {
+        if (lastMessage !== null) {
+            try {
+                const parsed = JSON.parse(lastMessage.data);
+                addItem(createData(Date.now(), parsed.data.url, parsed.data.method, "", "", "", parsed));
+            } catch(err) {
+                console.error("Error parsing WebSocket message:", err, lastMessage.data);
+            }
+        }
+    }, [lastMessage]);
+
+    const connectionStatus = {
+        [ReadyState.CONNECTING]: 'Connecting',
+        [ReadyState.OPEN]: 'Open',
+        [ReadyState.CLOSING]: 'Closing',
+        [ReadyState.CLOSED]: 'Closed',
+        [ReadyState.UNINSTANTIATED]: 'Uninstantiated',
+    }[readyState];
+
+    const handleClickSendMessage = () => {
+        if (readyState === ReadyState.OPEN) {
+            sendMessage('Hello from React!');
+        }
+    };
+
+    function createData(id, url, method, path, query, status, data) {
+        return { id, url, method, path, query, status, data };
+    }
+
+    const addItem = (newItem) => {
+        setItems([newItem, ...items]);
+    };
+
+    const removeItem = (idToRemove) => {
+        setItems(items.filter(item => item.id !== idToRemove));
+    };
+
 
   return (
       <ThemeProvider theme={theme}>
@@ -27,7 +69,7 @@ function App() {
                   </div>
                   <Button onClick={newTab}>Nouvel onglet</Button>
               </div>
-              <StickyHeadTable />
+              <StickyHeadTable items={items} />
               <script type="module" src="/src/tableaux.jsx"></script>
           </>
       </ThemeProvider>
