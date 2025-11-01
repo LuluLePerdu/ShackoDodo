@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"proxy-interceptor/websocket"
 	"time"
 )
 
@@ -71,7 +72,7 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Println("===== REQUETE =====")
 		fmt.Println(string(jsonData))
-		//websocket.RequestChannel <- jsonData
+		websocket.RequestChannel <- jsonData
 	}
 
 	// Clean hop-by-hop/proxy headers
