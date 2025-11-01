@@ -253,11 +253,6 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 }
 
 func Start() {
-	if err := cert.InitCA(); err != nil {
-		log.Fatalf("Erreur initialisation CA: %v", err)
-	}
-	log.Println("Certificat CA généré")
-
 	go func() {
 		listener, err := net.Listen("tcp", "127.0.0.1:8181")
 		if err != nil {
@@ -266,7 +261,6 @@ func Start() {
 		defer listener.Close()
 
 		log.Println("Proxy HTTP/HTTPS Interceptor with MITM")
-		log.Println("Proxy démarré sur 127.0.0.1:8181")
 		log.Println("En attente de connexions...")
 
 		for {

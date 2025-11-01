@@ -60,7 +60,6 @@ func RequestElevation() error {
 
 // InstallCertToSystemStore installs the CA certificate to Windows Trusted Root store
 func InstallCertToSystemStore(certPath string) error {
-	log.Printf("Installation du certificat CA dans le magasin système Windows...")
 
 	cmd := exec.Command("certutil", "-addstore", "-f", "Root", certPath)
 	output, err := cmd.CombinedOutput()
