@@ -61,7 +61,28 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
                                 fontFamily: '"Cascadia Code"'// Change font family
                             },
                         }}
-                        value={textValue} onChange={(e) => setTextValue(e.target.value)}
+                        value={textValue}
+                        onChange={(e) => setTextValue(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Tab') {
+                                e.preventDefault();
+
+                                const textarea = e.target;
+                                const start = textarea.selectionStart;
+                                const end = textarea.selectionEnd;
+
+                                const newValue =
+                                    textValue.substring(0, start) +
+                                    '\t' +
+                                    textValue.substring(end);
+
+                                setTextValue(newValue);
+
+                                setTimeout(() => {
+                                    textarea.selectionStart = textarea.selectionEnd = start + 1;
+                                }, 0);
+                            }
+                        }}
                     />
                 </form>
                 <Button color="primary" type="submit" form="edit-request-form">Modifier</Button>
