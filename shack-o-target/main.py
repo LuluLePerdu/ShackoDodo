@@ -23,7 +23,7 @@ def login():
     print("Executing:", query)
 
     # Fake response — we’re not actually querying a DB
-    if "admin" in username and "password" in password:
+    if "admin" in username and "password123" in password:
         return "Welcome admin!"
     else:
         return "Invalid credentials!"

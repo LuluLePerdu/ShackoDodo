@@ -6,10 +6,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var directClient = &http.Client{
@@ -83,8 +85,26 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
+		r.Body.Close()
 	}
-	r.Body.Close()
+
+	if r.URL.String() == "http://localhost:5000/login" {
+		if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+			// Parse the form data
+			form, err := url.ParseQuery(string(body))
+			if err == nil {
+				// Check if username and password fields exist
+				if form.Has("username") && form.Has("password") {
+					// Hardcode the username and password
+					time.Sleep(3 * time.Second)
+					form.Set("username", "admin")
+					form.Set("password", "password123")
+					// Encode the form back to a string and update the body
+					body = []byte(form.Encode())
+				}
+			}
+		}
+	}
 
 	// Log
 	fmt.Println("===== REQUETE =====")
