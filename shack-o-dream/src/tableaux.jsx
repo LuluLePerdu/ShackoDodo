@@ -9,14 +9,17 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 
 const columns = [
-    { id: 'method', label: 'Method', minWidth: 170 },
+    { id: 'id', label: 'ID', minWidth: 170 },
     { id: 'url', label: 'URL', minWidth: 100 },
-    { id: 'body', label: 'Body', minWidth: 100}
+    { id: 'method', label: 'Méthode', minWidth: 100},
+    { id: 'path', label: 'Chemin', minWidth: 100},
+    { id: 'query', label: 'Requête', minWidth: 100},
+    { id: 'status', label: 'Statut', minWidth: 100}
 
 ];
 
-function createData(method, url, body) {
-    return { method, url, body };
+function createData(id, url, method, path, query, status) {
+    return { id, url, method, path, query, status };
 }
 
 const rows = [
