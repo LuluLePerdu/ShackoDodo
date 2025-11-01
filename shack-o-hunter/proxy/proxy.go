@@ -66,13 +66,18 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 		Body:    string(body),
 	}
 
-	jsonData, err := json.MarshalIndent(requestData, "", "  ")
+	message := websocket.Message{
+		Type:   "http_request",
+		Object: requestData,
+	}
+
+	jsonData, err := json.MarshalIndent(message, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling JSON: %v", err)
 	} else {
 		fmt.Println("===== REQUETE =====")
 		fmt.Println(string(jsonData))
-		websocket.RequestChannel <- jsonData
+		websocket.BroadcastChannel <- jsonData
 	}
 
 	// Clean hop-by-hop/proxy headers
