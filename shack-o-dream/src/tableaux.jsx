@@ -9,14 +9,15 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import EditDrawer from "./editDrawer.jsx";
 import Connection from "./Connection.jsx";
+import {Collapse} from "@mui/material";
 
 const columns = [
-    { id: 'id', label: 'ID', minWidth: 170 },
+    { id: 'id', label: 'ID', minWidth: 75 },
     { id: 'url', label: 'URL', minWidth: 100 },
-    { id: 'method', label: 'Méthode', minWidth: 100},
+    { id: 'method', label: 'Méthode', minWidth: 75},
     { id: 'path', label: 'Chemin', minWidth: 100},
     { id: 'query', label: 'Requête', minWidth: 100},
-    { id: 'status', label: 'Statut', minWidth: 100}
+    { id: 'status', label: 'Statut', minWidth: 75}
 
 ];
 
@@ -71,7 +72,14 @@ export default function StickyHeadTable() {
 
     return (
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ maxHeight: 440 }}>
+            <TableContainer sx={{ maxHeight: 440,
+                overflowX: 'auto',
+                transition: 'transform 0.5s ease',
+                transform: drawerOpen
+                    ? 'translateX(0) scaleX(0.8)'
+                    : 'translateX(0) scaleX(1)',
+                transformOrigin: 'left center',
+            }}>
                 <Table stickyHeader aria-label="sticky table">
                     <TableHead>
                         <TableRow>
@@ -108,6 +116,7 @@ export default function StickyHeadTable() {
                     </TableBody>
                 </Table>
             </TableContainer>
+
             <TablePagination
                 rowsPerPageOptions={[10, 25, 100]}
                 component="div"
@@ -123,5 +132,6 @@ export default function StickyHeadTable() {
                 selectedRow={selectedRow ?? ''}
             />
         </Paper>
+
     );
 }
