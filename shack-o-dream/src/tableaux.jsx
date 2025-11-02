@@ -80,7 +80,7 @@ export default function StickyHeadTable({items, handleDeleteItem}) {
                     : 'translateX(0) scaleX(1)',
                 transformOrigin: 'left center',
             }}>
-                <Table stickyHeader aria-label="sticky table">
+                <Table stickyHeader aria-label="sticky table" size="small">
                     <TableHead>
                         <TableRow>
                             {columns.map((column) => (
