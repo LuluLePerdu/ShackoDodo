@@ -16,6 +16,8 @@ import (
 	"proxy-interceptor/websocket"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var directClient = &http.Client{
@@ -98,7 +100,7 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 
 	shouldFilter := shouldFilterDomain(host)
 	if !shouldFilter {
-		log.Printf("HTTPS CONNECT: %s", req.Host)
+		log.Printf("CONNECT: %s", req.Host)
 	}
 
 	clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
@@ -122,7 +124,7 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 	defer tlsClientConn.Close()
 
 	if !shouldFilter {
-		log.Printf("Interception HTTPS établie pour: %s", req.Host)
+		log.Printf("HTTPS interception established for: %s", req.Host)
 	}
 
 	reader := bufio.NewReader(tlsClientConn)
@@ -173,11 +175,9 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	shouldFilter := shouldFilterDomain(host)
 
 	if !shouldFilter {
-		if isHTTPS {
-			log.Printf("HTTPS Request: %s %s", req.Method, fullURL)
-		} else {
-			log.Printf("HTTP Request: %s %s", req.Method, fullURL)
-		}
+		log.Printf("Request: %s %s", req.Method, fullURL)
+	} else {
+		log.Printf("Request: %s %s", req.Method, fullURL)
 	}
 
 	// Specific logic for HTTP login request
@@ -196,17 +196,22 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	}
 
 	if !shouldFilter {
-		// Générer un ID unique pour la requête
-		requestID := fmt.Sprintf("%d", time.Now().UnixNano())
+		requestID := uuid.New().String()
 
-		// Envoyer la requête interceptée au WebSocket avec status "pending"
+		// Vérifier si la pause est activée via la config
+		cfg := config.GetInstance()
+		status := "passthrough"
+		if cfg.Pause {
+			status = "pending"
+		}
+
 		requestData := websocket.RequestData{
 			ID:      requestID,
 			Method:  req.Method,
 			URL:     fullURL,
 			Headers: req.Header,
 			Body:    string(body),
-			Status:  "pending",
+			Status:  status,
 		}
 
 		message := websocket.Message{
@@ -218,57 +223,38 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 		if err != nil {
 			log.Printf("Error marshaling JSON: %v", err)
 		} else {
-			// Envoyer via WebSocket pour l'interface web
 			websocket.BroadcastChannel <- jsonData
-
-			// Log pour debug
-			if isHTTPS {
-				log.Printf("🔄 HTTPS Request PAUSED, waiting for modification: %s %s (ID: %s)", req.Method, fullURL, requestID)
-			} else {
-				log.Printf("🔄 HTTP Request PAUSED, waiting for modification: %s %s (ID: %s)", req.Method, fullURL, requestID)
-			}
 		}
 
-		// Attendre la modification (timeout de 30 secondes)
-		modification, hasModification := websocket.WaitForModification(requestID, 30*time.Second)
+		if cfg.Pause {
+			// Mode pause activé - attendre une modification
+			modification, hasModification := websocket.WaitForModification(requestID, 30*time.Second)
 
-		if hasModification {
-			log.Printf("✅ Modification received for request %s, action: %s", requestID, modification.Action)
-
-			switch modification.Action {
-			case "send":
-				// Appliquer les modifications et continuer avec la nouvelle requête
-				if modification.Method != "" {
-					req.Method = modification.Method
-				}
-				if modification.URL != "" {
-					if parsedURL, err := url.Parse(modification.URL); err == nil {
-						req.URL = parsedURL
-						fullURL = modification.URL
+			if hasModification {
+				switch modification.Action {
+				case "send":
+					if modification.Method != "" {
+						req.Method = modification.Method
 					}
+					if modification.URL != "" {
+						if parsedURL, err := url.Parse(modification.URL); err == nil {
+							req.URL = parsedURL
+							fullURL = modification.URL
+						}
+					}
+					if modification.Body != "" {
+						body = []byte(modification.Body)
+					}
+					for k, v := range modification.Headers {
+						req.Header[k] = v
+					}
+				case "drop":
+					clientConn.Write([]byte("HTTP/1.1 204 No Content\r\n\r\n"))
+					return
 				}
-				if modification.Body != "" {
-					body = []byte(modification.Body)
-				}
-				// Appliquer les headers modifiés
-				for k, v := range modification.Headers {
-					req.Header[k] = v
-				}
-				log.Printf("🚀 Sending modified request: %s %s", req.Method, fullURL)
-				// Continuer l'exécution avec la requête modifiée
-			case "drop":
-				// Ignorer la requête - retourner une réponse vide et arrêter
-				log.Printf("🗑️ Request dropped: %s %s", req.Method, fullURL)
-				clientConn.Write([]byte("HTTP/1.1 204 No Content\r\n\r\n"))
-				return
-			default:
-				log.Printf("⚠️ Unknown action '%s', sending original request", modification.Action)
-				// Continuer avec la requête originale
 			}
-		} else {
-			// Timeout - envoyer la requête originale
-			log.Printf("⏰ Timeout waiting for modification, sending original request: %s %s", req.Method, fullURL)
 		}
+		// Si pause n'est pas activé, la requête continue directement sans attendre
 	}
 
 	proxyReq, err := http.NewRequest(req.Method, fullURL, bytes.NewReader(body))
@@ -291,7 +277,7 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	defer resp.Body.Close()
 
 	if !shouldFilter {
-		log.Printf("Réponse: %d %s", resp.StatusCode, resp.Status)
+		log.Printf("Response: %d %s", resp.StatusCode, resp.Status)
 	}
 
 	clientConn.Write([]byte(fmt.Sprintf("HTTP/%d.%d %d %s\r\n",

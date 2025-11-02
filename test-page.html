@@ -204,19 +204,19 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🧪 Page de Test ShackoDodo</h1>
+            <h1>Page de Test ShackoDodo</h1>
             <p>Générateur de requêtes HTTP/HTTPS pour tester l'interception et la modification</p>
         </div>
 
         <div class="target-info">
-            <h4>🎯 Services de Test</h4>
+            <h4>Services de Test</h4>
             <p><strong>Service principal:</strong> https://httpbin.org (API de test HTTP)</p>
             <p><strong>Service POST:</strong> https://httpbin.org/post (Test POST JSON)</p>
             <p><strong>Service GET:</strong> https://httpbin.org/get (Test GET avec paramètres)</p>
         </div>
 
         <div class="test-section">
-            <h3>📝 Tests de Formulaires Classiques</h3>
+            <h3>Tests de Formulaires Classiques</h3>
             <div class="test-grid">
                 <div class="test-card">
                     <h4>Login POST (vers httpbin.org)</h4>
@@ -229,7 +229,7 @@
                             <label>Mot de passe:</label>
                             <input type="password" name="password" value="password123" required>
                         </div>
-                        <button type="submit" class="btn btn-post">🔐 POST Login</button>
+                        <button type="submit" class="btn btn-post">POST Login</button>
                     </form>
                 </div>
 
@@ -248,7 +248,7 @@
                                 <option value="security">Sécurité</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-get">🔍 GET Recherche</button>
+                        <button type="submit" class="btn btn-get">GET Recherche</button>
                     </form>
                 </div>
             </div>
@@ -267,7 +267,7 @@
                         <label>Données JSON:</label>
                         <textarea id="postData">{"action": "test", "user": "ShackoDodo", "payload": "intercepted_data"}</textarea>
                     </div>
-                    <button class="btn btn-ajax" onclick="sendAjaxPost()">📤 Envoyer POST JSON</button>
+                    <button class="btn btn-ajax" onclick="sendAjaxPost()">Envoyer POST JSON</button>
                 </div>
 
                 <div class="test-card">
@@ -280,7 +280,7 @@
                         <label>Paramètres:</label>
                         <textarea id="getParams">test=interception&proxy=ShackoDodo&timestamp=123456</textarea>
                     </div>
-                    <button class="btn btn-ajax" onclick="sendAjaxGet()">📥 Envoyer GET</button>
+                    <button class="btn btn-ajax" onclick="sendAjaxGet()">Envoyer GET</button>
                 </div>
             </div>
         </div>
@@ -298,7 +298,7 @@
                         <label>Headers (JSON):</label>
                         <textarea id="customHeaders">{"X-Custom-Header": "ShackoDodo-Test", "Authorization": "Bearer fake-token-123"}</textarea>
                     </div>
-                    <button class="btn btn-ajax" onclick="sendWithHeaders()">📋 Envoyer avec Headers</button>
+                    <button class="btn btn-ajax" onclick="sendWithHeaders()">Envoyer avec Headers</button>
                 </div>
 
                 <div class="test-card">

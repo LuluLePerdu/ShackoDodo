@@ -106,6 +106,10 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
+        #sendAllBtn {
+            display: none;
+        }
+
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -158,6 +162,11 @@
         .request-item.sent {
             border-left: 4px solid #4caf50;
             background: #f1f8e9;
+        }
+
+        .request-item.passthrough {
+            border-left: 4px solid #2196f3;
+            background: #e3f2fd;
         }
 
         .request-item.dropped {
@@ -262,7 +271,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 Modificateur de Requêtes ShackoDodo</h1>
+            <h1>Modificateur de Requêtes ShackoDodo</h1>
             <p>Interface de modification des requêtes HTTP/HTTPS interceptées</p>
         </div>
 
@@ -273,28 +282,29 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-success" id="pauseBtn">⏸️ Pause</button>
-                <button class="btn btn-danger" id="clearBtn">🗑️ Vider</button>
+                <button class="btn btn-success" id="pauseBtn">Pause</button>
+                <button class="btn btn-primary" id="sendAllBtn" onclick="sendAllPendingRequests()">Envoyer Tout</button>
+                <button class="btn btn-danger" id="clearBtn">Vider</button>
                 <span id="requestCount">0 requête(s)</span>
             </div>
         </div>
 
         <div class="main-content">
             <div class="panel panel-left">
-                <h3>📡 Requêtes Interceptées</h3>
+                <h3>Requêtes Interceptées</h3>
                 <div id="requestsList">
                     <div class="no-requests">
-                        <p>🔍 Aucune requête interceptée</p>
+                        <p>Aucune requête interceptée</p>
                         <p>Lancez des requêtes depuis Firefox pour les voir ici</p>
                     </div>
                 </div>
             </div>
 
             <div class="panel">
-                <h3>✏️ Éditeur de Requête</h3>
+                <h3>Éditeur de Requête</h3>
                 <div id="editorArea">
                     <div class="no-selection">
-                        <p>👆 Sélectionnez une requête à gauche pour la modifier</p>
+                        <p>Sélectionnez une requête à gauche pour la modifier</p>
                     </div>
                 </div>
             </div>
@@ -320,47 +330,53 @@
 
         function connectWebSocket() {
             try {
-                log('🔄 Tentative de connexion WebSocket vers ws://localhost:8182/ws');
+                log('Tentative de connexion WebSocket vers ws://localhost:8182/ws');
                 ws = new WebSocket('ws://localhost:8182/ws');
 
                 ws.onopen = function() {
-                    log('✅ Connecté au proxy ShackoDodo');
+                    log('Connecté au proxy ShackoDodo');
                     document.getElementById('statusDot').classList.add('connected');
                     document.getElementById('connectionStatus').textContent = 'Connecté';
                 };
 
                 ws.onmessage = function(event) {
                     try {
-                        log('📨 Message reçu: ' + event.data.substring(0, 100) + '...');
                         const data = JSON.parse(event.data);
                         if (data.type === 'request') {
                             addRequest(data.data);
                         }
                     } catch (e) {
-                        log('❌ Erreur parsing message: ' + e.message);
+                        log('Erreur parsing message: ' + e.message);
                     }
                 };
 
                 ws.onclose = function(event) {
-                    log(`❌ Connexion fermée (code: ${event.code}), reconnexion dans 3s...`);
+                    log(`Connexion fermée (code: ${event.code}), reconnexion dans 3s...`);
                     document.getElementById('statusDot').classList.remove('connected');
                     document.getElementById('connectionStatus').textContent = 'Déconnecté';
                     setTimeout(connectWebSocket, 3000);
                 };
 
                 ws.onerror = function(error) {
-                    log('❌ Erreur WebSocket: ' + (error.message || 'Erreur de connexion'));
+                    log('Erreur WebSocket: ' + (error.message || 'Erreur de connexion'));
                 };
 
             } catch (e) {
-                log('❌ Erreur connexion WebSocket: ' + e.message);
+                log('Erreur connexion WebSocket: ' + e.message);
                 setTimeout(connectWebSocket, 3000);
             }
         }
 
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
         function addRequest(requestData) {
             const request = {
-                id: requestData.id || (Date.now() + Math.random()), // Utiliser l'ID du proxy ou générer si absent
+                id: requestData.id || generateUUID(),
                 timestamp: new Date(),
                 ...requestData
             };
@@ -369,7 +385,7 @@
             updateRequestsList();
             updateRequestCount();
 
-            log(`📥 Nouvelle requête: ${request.method} ${new URL(request.url).hostname} (ID: ${request.id})`);
+            log(`Nouvelle requête: ${request.method} ${new URL(request.url).hostname} (ID: ${request.id})`);
         }
 
         function updateRequestsList() {
@@ -386,8 +402,24 @@
             }
 
             container.innerHTML = requests.map(request => {
-                const statusColor = request.status === 'pending' ? '#ff9800' : request.status === 'sent' ? '#4caf50' : '#757575';
-                const statusText = request.status === 'pending' ? '⏸️ EN PAUSE' : request.status === 'sent' ? '✅ ENVOYÉ' : '📤 TRAITÉ';
+                let statusColor, statusText;
+                switch(request.status) {
+                    case 'pending':
+                        statusColor = '#ff9800';
+                        statusText = 'EN PAUSE';
+                        break;
+                    case 'sent':
+                        statusColor = '#4caf50';
+                        statusText = 'ENVOYÉ';
+                        break;
+                    case 'passthrough':
+                        statusColor = '#2196f3';
+                        statusText = 'PASSTHROUGH';
+                        break;
+                    default:
+                        statusColor = '#757575';
+                        statusText = 'TRAITÉ';
+                }
 
                 return `
                     <div class="request-item ${selectedRequest?.id === request.id ? 'selected' : ''}" onclick="selectRequest('${request.id}')">
@@ -418,6 +450,17 @@
         function showEditor() {
             const editorArea = document.getElementById('editorArea');
 
+            if (selectedRequest.status !== 'pending') {
+                editorArea.innerHTML = `
+                    <div class="no-selection">
+                        <p>Cette requête ne peut pas être modifiée (statut: ${selectedRequest.status})</p>
+                        <p>Seules les requêtes en statut "pending" peuvent être modifiées.</p>
+                        <p>Activez le bouton Pause pour intercepter les nouvelles requêtes.</p>
+                    </div>
+                `;
+                return;
+            }
+
             editorArea.innerHTML = `
                 <div class="form-group">
                     <label>Méthode HTTP:</label>
@@ -446,9 +489,9 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn btn-success" onclick="sendModifiedRequest()">🚀 Envoyer Requête</button>
-                    <button class="btn btn-primary" onclick="resetEditor()">🔄 Réinitialiser</button>
-                    <button class="btn btn-danger" onclick="dropRequest()">🗑️ Ignorer Requête</button>
+                    <button class="btn btn-success" onclick="sendModifiedRequest()">Envoyer Requête</button>
+                    <button class="btn btn-primary" onclick="resetEditor()">Réinitialiser</button>
+                    <button class="btn btn-danger" onclick="dropRequest()">Ignorer Requête</button>
                 </div>
             `;
         }
@@ -462,7 +505,7 @@
                 try {
                     headers = JSON.parse(headersText);
                 } catch (e) {
-                    log('❌ Erreur parsing headers JSON: ' + e.message);
+                    log('Erreur parsing headers JSON: ' + e.message);
                     alert('Erreur dans le format JSON des headers. Vérifiez la syntaxe.');
                     return;
                 }
@@ -483,23 +526,22 @@
                         data: modifiedRequest
                     });
 
-                    log('📤 Envoi de la modification: ' + message.substring(0, 200) + '...');
+                    log('Envoi de la modification: ' + message.substring(0, 200) + '...');
                     ws.send(message);
 
-                    // Mettre à jour le status de la requête localement
                     selectedRequest.status = 'sent';
                     updateRequestsList();
 
-                    log(`🚀 Requête envoyée avec modifications: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
+                    log(`Requête envoyée avec modifications: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
                     log(`   -> ID: ${modifiedRequest.id}`);
                     log(`   -> Nouvelle méthode: ${modifiedRequest.method}`);
                     log(`   -> Nouvelle URL: ${modifiedRequest.url}`);
                     log(`   -> Body modifié: ${modifiedRequest.body ? 'Oui' : 'Non'}`);
                 } else {
-                    log('❌ Impossible d\'envoyer - WebSocket déconnecté');
+                    log('Impossible d\'envoyer - WebSocket déconnecté');
                 }
             } catch (error) {
-                log('❌ Erreur lors de l\'envoi: ' + error.message);
+                log('Erreur lors de l\'envoi: ' + error.message);
             }
         }
 
@@ -518,13 +560,12 @@
                     data: dropData
                 }));
 
-                // Mettre à jour le status localement
                 selectedRequest.status = 'dropped';
                 updateRequestsList();
 
-                log(`🗑️ Requête ignorée: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
+                log(`Requête ignorée: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
             } else {
-                log('❌ Impossible d\'ignorer - WebSocket déconnecté');
+                log('Impossible d\'ignorer - WebSocket déconnecté');
             }
         }
 
@@ -533,7 +574,25 @@
         }
 
         function updateRequestCount() {
-            document.getElementById('requestCount').textContent = `${requests.length} requête(s)`;
+            const pendingCount = requests.filter(r => r.status === 'pending').length;
+            const totalCount = requests.length;
+
+            let countText = `${totalCount} requête(s)`;
+            if (pendingCount > 0) {
+                countText += ` (${pendingCount} en attente)`;
+
+                // Mettre à jour le bouton "Envoyer Tout"
+                const sendAllBtn = document.getElementById('sendAllBtn');
+                sendAllBtn.textContent = `Envoyer Tout (${pendingCount})`;
+                sendAllBtn.style.display = 'inline-block';
+            } else {
+                // Cacher le bouton "Envoyer Tout" s'il n'y a pas de requêtes pending
+                const sendAllBtn = document.getElementById('sendAllBtn');
+                sendAllBtn.textContent = 'Envoyer Tout';
+                sendAllBtn.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+            }
+
+            document.getElementById('requestCount').textContent = countText;
         }
 
         function togglePause() {
@@ -541,13 +600,16 @@
             const btn = document.getElementById('pauseBtn');
 
             if (isPaused) {
-                btn.textContent = '▶️ Reprendre';
+                btn.textContent = 'Reprendre';
                 btn.classList.remove('btn-success');
                 btn.classList.add('btn-primary');
             } else {
-                btn.textContent = '⏸️ Pause';
+                btn.textContent = 'Pause';
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-success');
+
+                // Quand on désactive la pause, mettre à jour les statuts des requêtes pending
+                updatePendingRequestsStatus();
             }
 
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -557,7 +619,38 @@
                 }));
             }
 
-            log(isPaused ? '⏸️ Interception en pause' : '▶️ Interception reprise');
+            log(isPaused ? 'Interception en pause' : 'Interception reprise - Requêtes pending envoyées');
+        }
+
+        function updatePendingRequestsStatus() {
+            // Mettre à jour le statut de toutes les requêtes pending vers sent
+            requests.forEach(request => {
+                if (request.status === 'pending') {
+                    request.status = 'sent';
+                }
+            });
+            updateRequestsList();
+        }
+
+        function sendAllPendingRequests() {
+            const pendingCount = requests.filter(r => r.status === 'pending').length;
+
+            if (pendingCount === 0) {
+                log('Aucune requête en attente à envoyer');
+                return;
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'resume_all',
+                    data: true
+                }));
+
+                updatePendingRequestsStatus();
+                log(`${pendingCount} requête(s) en attente envoyée(s)`);
+            } else {
+                log('Impossible d\'envoyer - WebSocket déconnecté');
+            }
         }
 
         function clearRequests() {
@@ -568,11 +661,11 @@
 
             document.getElementById('editorArea').innerHTML = `
                 <div class="no-selection">
-                    <p>👆 Sélectionnez une requête à gauche pour la modifier</p>
+                    <p>Sélectionnez une requête à gauche pour la modifier</p>
                 </div>
             `;
 
-            log('🗑️ Liste des requêtes vidée');
+            log('Liste des requêtes vidée');
         }
 
         // Event listeners
@@ -581,7 +674,7 @@
 
         // Start connection
         connectWebSocket();
-        log('🚀 Démarrage de l\'interface de modification');
+        log('Démarrage de l\'interface de modification');
     </script>
 </body>
 </html>

@@ -48,27 +48,23 @@ var upgrader = websocket.Upgrader{
 }
 
 var BroadcastChannel = make(chan []byte)
-var ModifyChannel = make(chan ModifyRequestData, 100) // Buffer de 100 modifications
-var PendingModifications = make(map[string]ModifyRequestData)
-var PendingRequests = make(map[string]chan ModifyRequestData) // Requêtes en attente de modification
+var ModifyChannel = make(chan RequestData, 100)
+var PendingModifications = make(map[string]RequestData)
+var PendingRequests = make(map[string]chan RequestData)
 var modifyMutex sync.RWMutex
 var requestMutex sync.RWMutex
 
 func (h *Hub) run() {
-	log.Printf("WebSocket Hub started, waiting for clients...")
 	for {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			log.Printf("✅ New WebSocket client connected. Total clients: %d", len(h.clients))
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				log.Printf("❌ WebSocket client disconnected. Total clients: %d", len(h.clients))
 			}
 		case message := <-BroadcastChannel:
-			log.Printf("📡 Broadcasting message to %d clients", len(h.clients))
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -106,26 +102,32 @@ func (c *Client) readPump() {
 			if pause, ok := msg.Data.(bool); ok {
 				config.GetInstance().SetPause(pause)
 				log.Printf("Set pause to %v", pause)
+
+				// Si on désactive la pause, envoyer toutes les requêtes pending
+				if !pause {
+					go ResumePendingRequests()
+				}
 			} else {
 				log.Printf("Invalid data for pause type: %v", msg.Data)
 			}
+		case "resume_all":
+			// Envoyer toutes les requêtes en attente
+			go ResumePendingRequests()
 		case "modify_request":
-			// Traitement des modifications de requête
 			if modifyData, ok := msg.Data.(map[string]interface{}); ok {
-				modify := ModifyRequestData{
+				modify := RequestData{
 					ID:     getString(modifyData, "id"),
 					Method: getString(modifyData, "method"),
 					URL:    getString(modifyData, "url"),
 					Body:   getString(modifyData, "body"),
 					Action: getString(modifyData, "action"),
 				}
-				// Conversion des headers
+
 				if headersData, exists := modifyData["headers"]; exists {
 					modify.Headers = make(map[string][]string)
 
 					switch h := headersData.(type) {
 					case map[string]interface{}:
-						// Headers comme objet JSON
 						for k, v := range h {
 							switch val := v.(type) {
 							case string:
@@ -143,7 +145,6 @@ func (c *Client) readPump() {
 							}
 						}
 					case string:
-						// Headers comme string JSON, essayer de parser
 						var headerMap map[string]interface{}
 						if err := json.Unmarshal([]byte(h), &headerMap); err == nil {
 							for k, v := range headerMap {
@@ -155,33 +156,24 @@ func (c *Client) readPump() {
 					}
 				}
 
-				// Stocker la modification dans la map globale
 				modifyMutex.Lock()
 				PendingModifications[modify.ID] = modify
 				modifyMutex.Unlock()
 
-				// Vérifier s'il y a une requête en attente pour cet ID
 				requestMutex.Lock()
 				if waitChan, exists := PendingRequests[modify.ID]; exists {
-					// Envoyer la modification à la requête en attente
 					select {
 					case waitChan <- modify:
-						log.Printf("✅ Modification envoyée à la requête en attente %s", modify.ID)
 					default:
-						log.Printf("⚠️ Channel bloqué pour la requête %s", modify.ID)
 					}
 					delete(PendingRequests, modify.ID)
 				}
 				requestMutex.Unlock()
 
-				// Essayer d'envoyer dans le channel (non-bloquant)
 				select {
 				case ModifyChannel <- modify:
-					// Envoyé avec succès
 				default:
-					// Channel plein, on ignore (la modification est déjà dans la map)
 				}
-				log.Printf("Received modification for request %s: %s %s (action: %s)", modify.ID, modify.Method, modify.URL, modify.Action)
 			}
 		}
 	}
@@ -203,15 +195,11 @@ func (c *Client) writePump() {
 }
 
 func serveWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	log.Printf("🔗 WebSocket connection attempt from %s", r.RemoteAddr)
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("❌ WebSocket upgrade failed: %v", err)
+		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
-
-	log.Printf("✅ WebSocket upgraded successfully for %s", r.RemoteAddr)
 
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
@@ -220,25 +208,65 @@ func serveWebsocket(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
-func WaitForModification(id string, timeout time.Duration) (ModifyRequestData, bool) {
-	// Créer un channel pour cette requête
-	waitChan := make(chan ModifyRequestData, 1)
+func WaitForModification(id string, timeout time.Duration) (RequestData, bool) {
+	waitChan := make(chan RequestData, 1)
 
 	requestMutex.Lock()
 	PendingRequests[id] = waitChan
 	requestMutex.Unlock()
 
-	// Attendre la modification ou le timeout
 	select {
 	case modification := <-waitChan:
 		return modification, true
 	case <-time.After(timeout):
-		// Nettoyer si timeout
 		requestMutex.Lock()
 		delete(PendingRequests, id)
 		requestMutex.Unlock()
-		return ModifyRequestData{}, false
+		return RequestData{}, false
 	}
+}
+
+func ResumePendingRequests() {
+	requestMutex.Lock()
+	defer requestMutex.Unlock()
+
+	count := 0
+	for id, waitChan := range PendingRequests {
+		// Créer une requête de "send" automatique pour chaque requête en attente
+		autoSend := RequestData{
+			ID:     id,
+			Action: "send",
+		}
+
+		select {
+		case waitChan <- autoSend:
+			count++
+		default:
+			// Si le channel est fermé ou bloqué, on ignore
+		}
+		delete(PendingRequests, id)
+	}
+
+	if count > 0 {
+		log.Printf("Resumed %d pending requests", count)
+	}
+}
+
+func StorePendingModification(id string, modification RequestData) {
+	modifyMutex.Lock()
+	defer modifyMutex.Unlock()
+	PendingModifications[id] = modification
+}
+
+func GetModificationForID(id string) (RequestData, bool) {
+	modifyMutex.Lock()
+	defer modifyMutex.Unlock()
+
+	modification, exists := PendingModifications[id]
+	if exists {
+		delete(PendingModifications, id)
+	}
+	return modification, exists
 }
 
 func getString(data map[string]interface{}, key string) string {
