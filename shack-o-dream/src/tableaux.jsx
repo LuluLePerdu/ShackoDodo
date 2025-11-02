@@ -53,10 +53,6 @@ export default function StickyHeadTable({items, handleDeleteItem, sendModifiedRe
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
             <TableContainer sx={{ maxHeight: '70vh',
                 overflowX: 'auto',
-<<<<<<< HEAD
-                transformOrigin: 'left center',
-=======
->>>>>>> 994ae25a28171b3edb442a5b630adade5305c2cc
             }}>
                 <Table stickyHeader aria-label="sticky table" size="small">
                     <TableHead>
@@ -65,12 +61,12 @@ export default function StickyHeadTable({items, handleDeleteItem, sendModifiedRe
                                 <TableCell
                                     key={column.id}
                                     align={column.align}
-                                    style={{ minWidth: column.minWidth }}
+                                    style={{ minWidth: column.minWidth, backgroundColor: '#2b2b2bff' }}
                                 >
                                     {column.label}
                                 </TableCell>
                             ))}
-                            <TableCell></TableCell>
+                            <TableCell style={{ backgroundColor: '#2b2b2bff' }}></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -100,6 +96,7 @@ export default function StickyHeadTable({items, handleDeleteItem, sendModifiedRe
             </TableContainer>
 
             <TablePagination
+                sx={{ backgroundColor: '#2b2b2bff' }}
                 rowsPerPageOptions={[10, 25, 100]}
                 component="div"
                 count={items.length}
