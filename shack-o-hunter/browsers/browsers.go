@@ -243,17 +243,12 @@ func StartBrowser(browser Browser) error {
 		return fmt.Errorf("failed to create %s profile: %v", browser.String(), err)
 	}
 
-	exePath, _ := os.Executable()
-	exeDir := filepath.Dir(exePath)
-	testPagePath := filepath.Join(exeDir, "..", "test-page.html")
-	testPageURL := "file:///" + strings.ReplaceAll(testPagePath, "\\", "/")
-
-	log.Printf("Starting %s with test page: %s", browser.String(), testPageURL)
+	startURL := "http://www.example.com"
 
 	var cmd *exec.Cmd
 	switch browser {
 	case Firefox:
-		cmd = exec.Command(executable, "-no-remote", "-profile", profilePath, testPageURL)
+		cmd = exec.Command(executable, "-no-remote", "-profile", profilePath, startURL)
 	case Chrome:
 		cmd = exec.Command(executable,
 			"--user-data-dir="+profilePath,
@@ -264,7 +259,7 @@ func StartBrowser(browser Browser) error {
 			"--disable-web-security",
 			"--allow-running-insecure-content",
 			"--disable-features=VizDisplayCompositor",
-			testPageURL)
+			startURL)
 	case Edge:
 		cmd = exec.Command(executable,
 			"--user-data-dir="+profilePath,
@@ -274,7 +269,7 @@ func StartBrowser(browser Browser) error {
 			"--ignore-certificate-errors-spki-list",
 			"--disable-web-security",
 			"--allow-running-insecure-content",
-			testPageURL)
+			startURL)
 	}
 
 	cmd.Stdout = os.Stdout

@@ -8,6 +8,7 @@ import (
 	"proxy-interceptor/cert"
 	"proxy-interceptor/config"
 	"proxy-interceptor/proxy"
+	"proxy-interceptor/server"
 	"proxy-interceptor/websocket"
 	"time"
 )
@@ -59,6 +60,9 @@ func main() {
 	websocket.Start()
 	log.Println("WebSocket démarré")
 
+	// Démarrer le serveur frontend React
+	server.Start("3000")
+
 	// Délai pour s'assurer que tout est prêt
 	time.Sleep(1 * time.Second)
 
@@ -74,8 +78,8 @@ func main() {
 	}
 
 	fmt.Println("\nProxy ShackoDodo démarré!")
-	fmt.Println("- Ouvrez payload-modifier.html dans un navigateur pour l'interface de modification")
-	fmt.Println("- Ouvrez browser-launcher.html pour lancer des navigateurs via l'interface web")
+	fmt.Println("- Interface web: http://localhost:3000")
+	fmt.Println("- Le navigateur va s'ouvrir automatiquement")
 	fmt.Println("- Navigateurs supportés: Firefox, Chrome, Edge")
 	fmt.Println("- Appuyez sur Ctrl+C pour arrêter")
 
