@@ -27,9 +27,7 @@ function App() {
     }, [lastMessage]);
 
     function clear(){
-        while(items.length > 0){
-            items.pop();
-        }
+        setItems([]);
     }
     function play() {}
 
