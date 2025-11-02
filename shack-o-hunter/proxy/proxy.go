@@ -206,7 +206,6 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 		}
 
 		requestData := websocket.RequestData{
-			ID:      requestID,
 			Method:  req.Method,
 			URL:     fullURL,
 			Headers: req.Header,
@@ -216,6 +215,7 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 
 		message := websocket.Message{
 			Type: "request",
+			ID:   requestID,
 			Data: requestData,
 		}
 

@@ -13,7 +13,11 @@ export default function EditDrawer({ open, onClose, selectedRow, selectedItem, s
 
     React.useEffect(() => {
         if (selectedRow) {
-            setTextValue(JSON.stringify(selectedRow, null, 2));
+            if (selectedRow && selectedRow.data) {
+                setTextValue(JSON.stringify(selectedRow.data, null, 2));
+            } else {
+                setTextValue(JSON.stringify(selectedRow, null, 2));
+            }
         }
     }, [selectedRow]);
 

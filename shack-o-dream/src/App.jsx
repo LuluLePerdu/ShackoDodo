@@ -24,7 +24,7 @@ function App() {
         if (lastMessage !== null) {
             try {
                 const parsed = JSON.parse(lastMessage.data);
-                addItem(createData(parsed.data.id, parsed.data.url, parsed.data.method, "", "", parsed.data.status || "passthrough", parsed));
+                addItem(createData(parsed.id, parsed.data.url, parsed.data.method, "", "", parsed.data.status || "passthrough", parsed));
             } catch(err) {
                 console.error("Error parsing WebSocket message:", err, lastMessage.data);
             }
@@ -83,16 +83,18 @@ function App() {
         console.log('readyState:', readyState);
 
         if (readyState === ReadyState.OPEN) {
-            // Utiliser exactement le même format que payload-modifier.html
+            // Extract ID from modifiedRequest and send it at message level
+            const { id, ...requestData } = modifiedRequest;
             const message = JSON.stringify({
                 type: 'modify_request',
-                data: modifiedRequest  // Envoyer directement l'objet modifiedRequest
+                id: id,
+                data: requestData
             });
 
             console.log('Sending WebSocket message:', message);
             sendMessage(message);
-            updateItemStatus(modifiedRequest.id, 'sent');
-            console.log('Item status updated to sent for id:', modifiedRequest.id);
+            updateItemStatus(id, 'sent');
+            console.log('Item status updated to sent for id:', id);
         } else {
             console.log('WebSocket not open, readyState:', readyState);
         }

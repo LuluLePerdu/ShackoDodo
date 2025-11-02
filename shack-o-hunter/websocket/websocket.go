@@ -140,7 +140,6 @@ func (c *Client) readPump() {
 		case "modify_request":
 			if modifyData, ok := msg.Data.(map[string]interface{}); ok {
 				modify := RequestData{
-					ID:     getString(modifyData, "id"),
 					Method: getString(modifyData, "method"),
 					URL:    getString(modifyData, "url"),
 					Body:   getString(modifyData, "body"),
@@ -180,17 +179,19 @@ func (c *Client) readPump() {
 					}
 				}
 
+				requestID := msg.ID
+
 				modifyMutex.Lock()
-				PendingModifications[modify.ID] = modify
+				PendingModifications[requestID] = modify
 				modifyMutex.Unlock()
 
 				requestMutex.Lock()
-				if waitChan, exists := PendingRequests[modify.ID]; exists {
+				if waitChan, exists := PendingRequests[requestID]; exists {
 					select {
 					case waitChan <- modify:
 					default:
 					}
-					delete(PendingRequests, modify.ID)
+					delete(PendingRequests, requestID)
 				}
 				requestMutex.Unlock()
 
@@ -258,7 +259,6 @@ func ResumePendingRequests() {
 	for id, waitChan := range PendingRequests {
 		// Créer une requête de "send" automatique pour chaque requête en attente
 		autoSend := RequestData{
-			ID:     id,
 			Action: "send",
 		}
 
