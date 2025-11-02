@@ -1,5 +1,5 @@
 import './App.css'
-import { FaPlay } from "react-icons/fa";
+import {FaForward, FaPlay} from "react-icons/fa";
 import { FaPause } from "react-icons/fa";
 
 import * as React from 'react';
@@ -32,6 +32,8 @@ function App() {
     function play() {}
 
     function pause() {}
+
+    function foward() {}
 
     function newTab() {}
 
@@ -67,8 +69,9 @@ function App() {
           <>
               <div className="top">
                   <div>
-                    <Button onClick={play}><FaPlay/></Button>
-                    <Button onClick={pause}><FaPause/></Button>
+                      <Button onClick={play}><FaPlay/></Button>
+                      <Button onClick={pause}><FaPause/></Button>
+                      <Button onClick={foward}><FaForward/></Button>
                   </div>
                   <Button onClick={clear}>Supprimer toutes les requêtes</Button>
                   <Button onClick={newTab}>Nouvel onglet</Button>
