@@ -18,13 +18,6 @@ import (
 	"time"
 )
 
-type RequestData struct {
-	Method  string              `json:"method"`
-	URL     string              `json:"url"`
-	Headers map[string][]string `json:"headers"`
-	Body    string              `json:"body"`
-}
-
 var directClient = &http.Client{
 	Transport: &http.Transport{
 		Proxy: nil, // IMPORTANT: never proxy the outbound (avoid loops)
@@ -203,29 +196,78 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	}
 
 	if !shouldFilter {
-		requestData := RequestData{
+		// Générer un ID unique pour la requête
+		requestID := fmt.Sprintf("%d", time.Now().UnixNano())
+
+		// Envoyer la requête interceptée au WebSocket avec status "pending"
+		requestData := websocket.RequestData{
+			ID:      requestID,
 			Method:  req.Method,
 			URL:     fullURL,
 			Headers: req.Header,
 			Body:    string(body),
+			Status:  "pending",
 		}
 
 		message := websocket.Message{
-			Type: "http_request",
+			Type: "request",
 			Data: requestData,
 		}
 
-		jsonData, err := json.MarshalIndent(message, "", "  ")
+		jsonData, err := json.Marshal(message)
 		if err != nil {
 			log.Printf("Error marshaling JSON: %v", err)
 		} else {
-			if isHTTPS {
-				fmt.Println("===== REQUETE HTTPS ====")
-			} else {
-				fmt.Println("===== REQUETE HTTP ====")
-			}
-			fmt.Println(string(jsonData))
+			// Envoyer via WebSocket pour l'interface web
 			websocket.BroadcastChannel <- jsonData
+
+			// Log pour debug
+			if isHTTPS {
+				log.Printf("🔄 HTTPS Request PAUSED, waiting for modification: %s %s (ID: %s)", req.Method, fullURL, requestID)
+			} else {
+				log.Printf("🔄 HTTP Request PAUSED, waiting for modification: %s %s (ID: %s)", req.Method, fullURL, requestID)
+			}
+		}
+
+		// Attendre la modification (timeout de 30 secondes)
+		modification, hasModification := websocket.WaitForModification(requestID, 30*time.Second)
+
+		if hasModification {
+			log.Printf("✅ Modification received for request %s, action: %s", requestID, modification.Action)
+
+			switch modification.Action {
+			case "send":
+				// Appliquer les modifications et continuer avec la nouvelle requête
+				if modification.Method != "" {
+					req.Method = modification.Method
+				}
+				if modification.URL != "" {
+					if parsedURL, err := url.Parse(modification.URL); err == nil {
+						req.URL = parsedURL
+						fullURL = modification.URL
+					}
+				}
+				if modification.Body != "" {
+					body = []byte(modification.Body)
+				}
+				// Appliquer les headers modifiés
+				for k, v := range modification.Headers {
+					req.Header[k] = v
+				}
+				log.Printf("🚀 Sending modified request: %s %s", req.Method, fullURL)
+				// Continuer l'exécution avec la requête modifiée
+			case "drop":
+				// Ignorer la requête - retourner une réponse vide et arrêter
+				log.Printf("🗑️ Request dropped: %s %s", req.Method, fullURL)
+				clientConn.Write([]byte("HTTP/1.1 204 No Content\r\n\r\n"))
+				return
+			default:
+				log.Printf("⚠️ Unknown action '%s', sending original request", modification.Action)
+				// Continuer avec la requête originale
+			}
+		} else {
+			// Timeout - envoyer la requête originale
+			log.Printf("⏰ Timeout waiting for modification, sending original request: %s %s", req.Method, fullURL)
 		}
 	}
 

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page de Test HTTP/HTTPS - ShackoDodo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2d3436;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .test-section {
+            margin: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #0984e3;
+        }
+
+        .test-section h3 {
+            color: #2d3436;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .test-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+        .test-card h4 {
+            color: #0984e3;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3436;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0984e3;
+            box-shadow: 0 0 0 3px rgba(9, 132, 227, 0.1);
+        }
+
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-post {
+            background: #0984e3;
+            color: white;
+        }
+
+        .btn-get {
+            background: #00b894;
+            color: white;
+        }
+
+        .btn-ajax {
+            background: #6c5ce7;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .log-section {
+            margin: 30px;
+            background: #2d3436;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .log-header {
+            background: #636e72;
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+        }
+
+        .log-content {
+            padding: 20px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #ddd;
+            background: #2d3436;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .log-get { background: rgba(0, 184, 148, 0.2); }
+        .log-post { background: rgba(9, 132, 227, 0.2); }
+        .log-ajax { background: rgba(108, 92, 231, 0.2); }
+        .log-info { background: rgba(255, 255, 255, 0.1); }
+
+        .target-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin: 30px;
+            border-radius: 8px;
+        }
+
+        .target-info h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Page de Test ShackoDodo</h1>
+            <p>Générateur de requêtes HTTP/HTTPS pour tester l'interception et la modification</p>
+        </div>
+
+        <div class="target-info">
+            <h4>🎯 Services de Test</h4>
+            <p><strong>Service principal:</strong> https://httpbin.org (API de test HTTP)</p>
+            <p><strong>Service POST:</strong> https://httpbin.org/post (Test POST JSON)</p>
+            <p><strong>Service GET:</strong> https://httpbin.org/get (Test GET avec paramètres)</p>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Tests de Formulaires Classiques</h3>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h4>Login POST (vers httpbin.org)</h4>
+                    <form id="loginForm" action="https://httpbin.org/post" method="POST">
+                        <div class="form-group">
+                            <label>Nom d'utilisateur:</label>
+                            <input type="text" name="username" value="admin" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Mot de passe:</label>
+                            <input type="password" name="password" value="password123" required>
+                        </div>
+                        <button type="submit" class="btn btn-post">🔐 POST Login</button>
+                    </form>
+                </div>
+
+                <div class="test-card">
+                    <h4>Recherche GET (Service externe)</h4>
+                    <form id="searchForm" action="https://httpbin.org/get" method="GET">
+                        <div class="form-group">
+                            <label>Terme de recherche:</label>
+                            <input type="text" name="q" value="ShackoDodo test" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Catégorie:</label>
+                            <select name="category">
+                                <option value="all">Toutes</option>
+                                <option value="web">Web</option>
+                                <option value="security">Sécurité</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-get">🔍 GET Recherche</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 Tests AJAX/JSON</h3>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h4>POST JSON</h4>
+                    <div class="form-group">
+                        <label>URL:</label>
+                        <input type="text" id="postUrl" value="https://httpbin.org/post">
+                    </div>
+                    <div class="form-group">
+                        <label>Données JSON:</label>
+                        <textarea id="postData">{"action": "test", "user": "ShackoDodo", "payload": "intercepted_data"}</textarea>
+                    </div>
+                    <button class="btn btn-ajax" onclick="sendAjaxPost()">📤 Envoyer POST JSON</button>
+                </div>
+
+                <div class="test-card">
+                    <h4>GET avec Paramètres</h4>
+                    <div class="form-group">
+                        <label>URL de base:</label>
+                        <input type="text" id="getUrl" value="https://httpbin.org/get">
+                    </div>
+                    <div class="form-group">
+                        <label>Paramètres:</label>
+                        <textarea id="getParams">test=interception&proxy=ShackoDodo&timestamp=123456</textarea>
+                    </div>
+                    <button class="btn btn-ajax" onclick="sendAjaxGet()">📥 Envoyer GET</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Tests Avancés</h3>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h4>Requête avec Headers Personnalisés</h4>
+                    <div class="form-group">
+                        <label>URL:</label>
+                        <input type="text" id="headerUrl" value="https://httpbin.org/headers">
+                    </div>
+                    <div class="form-group">
+                        <label>Headers (JSON):</label>
+                        <textarea id="customHeaders">{"X-Custom-Header": "ShackoDodo-Test", "Authorization": "Bearer fake-token-123"}</textarea>
+                    </div>
+                    <button class="btn btn-ajax" onclick="sendWithHeaders()">📋 Envoyer avec Headers</button>
+                </div>
+
+                <div class="test-card">
+                    <h4>Tests Rapides</h4>
+                    <button class="btn btn-get" onclick="quickTest('https://httpbin.org/ip')">🌍 Mon IP</button>
+                    <button class="btn btn-post" onclick="quickTest('https://httpbin.org/user-agent')">🕵️ User Agent</button>
+                    <button class="btn btn-ajax" onclick="quickTest('https://httpbin.org/delay/2')">⏱️ Délai 2s</button>
+                    <button class="btn btn-post" onclick="testLocalApp()">🌐 Test POST</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-section">
+            <div class="log-header">
+                📊 Journal des Activités
+                <button class="btn" style="float: right; padding: 5px 10px; background: #636e72;" onclick="clearLog()">Vider</button>
+            </div>
+            <div class="log-content" id="logContent">
+                <div class="log-entry log-info">[INFO] Page de test chargée - Prêt pour les tests d'interception</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function logActivity(type, message) {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${timestamp}] <strong>${type.toUpperCase()}:</strong> ${message}`;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContent').innerHTML = '<div class="log-entry log-info">[INFO] Journal vidé</div>';
+        }
+
+        // AJAX POST JSON
+        function sendAjaxPost() {
+            const url = document.getElementById('postUrl').value;
+            const data = document.getElementById('postData').value;
+
+            logActivity('post', `Envoi POST AJAX vers ${url}`);
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Test-Source': 'ShackoDodo-TestPage'
+                },
+                body: data
+            })
+            .then(response => {
+                logActivity('post', `Réponse: ${response.status} ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                logActivity('post', `Succès: ${JSON.stringify(data).substring(0, 100)}...`);
+            })
+            .catch(error => {
+                logActivity('post', `Erreur: ${error.message}`);
+            });
+        }
+
+        // AJAX GET
+        function sendAjaxGet() {
+            const baseUrl = document.getElementById('getUrl').value;
+            const params = document.getElementById('getParams').value;
+            const url = `${baseUrl}?${params}`;
+
+            logActivity('get', `Envoi GET AJAX vers ${url}`);
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Test-Source': 'ShackoDodo-TestPage'
+                }
+            })
+            .then(response => {
+                logActivity('get', `Réponse: ${response.status} ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                logActivity('get', `Succès: ${JSON.stringify(data).substring(0, 100)}...`);
+            })
+            .catch(error => {
+                logActivity('get', `Erreur: ${error.message}`);
+            });
+        }
+
+        // Envoi avec headers personnalisés
+        function sendWithHeaders() {
+            const url = document.getElementById('headerUrl').value;
+            const headersText = document.getElementById('customHeaders').value;
+
+            let headers = {};
+            try {
+                headers = JSON.parse(headersText);
+            } catch (e) {
+                logActivity('ajax', `Erreur parsing headers: ${e.message}`);
+                return;
+            }
+
+            logActivity('ajax', `Envoi avec headers personnalisés vers ${url}`);
+
+            fetch(url, {
+                method: 'GET',
+                headers: headers
+            })
+            .then(response => {
+                logActivity('ajax', `Réponse: ${response.status} ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                logActivity('ajax', `Succès: ${JSON.stringify(data).substring(0, 100)}...`);
+            })
+            .catch(error => {
+                logActivity('ajax', `Erreur: ${error.message}`);
+            });
+        }
+
+        // Test rapide
+        function quickTest(url) {
+            logActivity('ajax', `Test rapide vers ${url}`);
+
+            fetch(url, {
+                headers: {
+                    'X-Test-Source': 'ShackoDodo-QuickTest'
+                }
+            })
+            .then(response => {
+                logActivity('ajax', `Test rapide réussi: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                logActivity('ajax', `Résultat: ${JSON.stringify(data).substring(0, 80)}...`);
+            })
+            .catch(error => {
+                logActivity('ajax', `Erreur test rapide: ${error.message}`);
+            });
+        }
+
+        // Test application externe
+        function testLocalApp() {
+            logActivity('post', 'Test POST vers httpbin.org');
+
+            const formData = new FormData();
+            formData.append('username', 'testuser');
+            formData.append('password', 'testpass');
+            formData.append('action', 'test_intercept');
+
+            fetch('https://httpbin.org/post', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Test-Source': 'ShackoDodo-TestApp'
+                }
+            })
+            .then(response => {
+                logActivity('post', `Test POST réponse: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                logActivity('post', `Test POST OK: ${JSON.stringify(data).substring(0, 100)}...`);
+            })
+            .catch(error => {
+                logActivity('post', `Erreur test POST: ${error.message}`);
+            });
+        }
+
+        // Event listeners pour les formulaires
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            logActivity('post', 'Soumission formulaire POST login vers httpbin.org');
+        });
+
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            logActivity('get', 'Soumission formulaire GET recherche vers httpbin.org');
+        });
+
+        // Auto-tests au chargement
+        setTimeout(() => {
+            logActivity('info', 'Tests automatiques disponibles - Cliquez sur les boutons pour générer du trafic');
+        }, 1000);
+    </script>
+</body>
+</html>
+

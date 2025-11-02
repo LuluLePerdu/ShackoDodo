@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modificateur de Requêtes - ShackoDodo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #27ae60;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 70vh;
+        }
+
+        .panel {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-left {
+            border-right: 2px solid #ecf0f1;
+        }
+
+        .panel h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .request-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .request-item:hover {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            transform: translateX(5px);
+        }
+
+        .request-item.selected {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+        }
+
+        .request-item.pending {
+            border-left: 4px solid #ff9800;
+            background: #fff3e0;
+        }
+
+        .request-item.sent {
+            border-left: 4px solid #4caf50;
+            background: #f1f8e9;
+        }
+
+        .request-item.dropped {
+            border-left: 4px solid #f44336;
+            background: #ffebee;
+            opacity: 0.7;
+        }
+
+        .request-method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            margin-right: 10px;
+        }
+
+        .method-get { background: #27ae60; }
+        .method-post { background: #3498db; }
+        .method-put { background: #f39c12; }
+        .method-delete { background: #e74c3c; }
+
+        .request-url {
+            font-size: 14px;
+            color: #555;
+            word-break: break-all;
+        }
+
+        .request-time {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-group textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .no-requests {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 40px;
+        }
+
+        .no-selection {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 40px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .log-area {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Modificateur de Requêtes ShackoDodo</h1>
+            <p>Interface de modification des requêtes HTTP/HTTPS interceptées</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="connectionStatus">Déconnecté</span>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-success" id="pauseBtn">⏸️ Pause</button>
+                <button class="btn btn-danger" id="clearBtn">🗑️ Vider</button>
+                <span id="requestCount">0 requête(s)</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel panel-left">
+                <h3>📡 Requêtes Interceptées</h3>
+                <div id="requestsList">
+                    <div class="no-requests">
+                        <p>🔍 Aucune requête interceptée</p>
+                        <p>Lancez des requêtes depuis Firefox pour les voir ici</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>✏️ Éditeur de Requête</h3>
+                <div id="editorArea">
+                    <div class="no-selection">
+                        <p>👆 Sélectionnez une requête à gauche pour la modifier</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-area" id="logArea">
+            <div>[LOG] Interface de modification démarrée</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let requests = [];
+        let selectedRequest = null;
+        let isPaused = false;
+
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            logArea.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function connectWebSocket() {
+            try {
+                log('🔄 Tentative de connexion WebSocket vers ws://localhost:8182/ws');
+                ws = new WebSocket('ws://localhost:8182/ws');
+
+                ws.onopen = function() {
+                    log('✅ Connecté au proxy ShackoDodo');
+                    document.getElementById('statusDot').classList.add('connected');
+                    document.getElementById('connectionStatus').textContent = 'Connecté';
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        log('📨 Message reçu: ' + event.data.substring(0, 100) + '...');
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'request') {
+                            addRequest(data.data);
+                        }
+                    } catch (e) {
+                        log('❌ Erreur parsing message: ' + e.message);
+                    }
+                };
+
+                ws.onclose = function(event) {
+                    log(`❌ Connexion fermée (code: ${event.code}), reconnexion dans 3s...`);
+                    document.getElementById('statusDot').classList.remove('connected');
+                    document.getElementById('connectionStatus').textContent = 'Déconnecté';
+                    setTimeout(connectWebSocket, 3000);
+                };
+
+                ws.onerror = function(error) {
+                    log('❌ Erreur WebSocket: ' + (error.message || 'Erreur de connexion'));
+                };
+
+            } catch (e) {
+                log('❌ Erreur connexion WebSocket: ' + e.message);
+                setTimeout(connectWebSocket, 3000);
+            }
+        }
+
+        function addRequest(requestData) {
+            const request = {
+                id: requestData.id || (Date.now() + Math.random()), // Utiliser l'ID du proxy ou générer si absent
+                timestamp: new Date(),
+                ...requestData
+            };
+
+            requests.unshift(request);
+            updateRequestsList();
+            updateRequestCount();
+
+            log(`📥 Nouvelle requête: ${request.method} ${new URL(request.url).hostname} (ID: ${request.id})`);
+        }
+
+        function updateRequestsList() {
+            const container = document.getElementById('requestsList');
+
+            if (requests.length === 0) {
+                container.innerHTML = `
+                    <div class="no-requests">
+                        <p>🔍 Aucune requête interceptée</p>
+                        <p>Lancez des requêtes depuis Firefox pour les voir ici</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = requests.map(request => {
+                const statusColor = request.status === 'pending' ? '#ff9800' : request.status === 'sent' ? '#4caf50' : '#757575';
+                const statusText = request.status === 'pending' ? '⏸️ EN PAUSE' : request.status === 'sent' ? '✅ ENVOYÉ' : '📤 TRAITÉ';
+
+                return `
+                    <div class="request-item ${selectedRequest?.id === request.id ? 'selected' : ''}" onclick="selectRequest('${request.id}')">
+                        <div>
+                            <span class="request-method method-${request.method.toLowerCase()}">${request.method}</span>
+                            <span class="request-url">${new URL(request.url).hostname}</span>
+                            <span style="color: ${statusColor}; font-size: 12px; margin-left: auto;">${statusText}</span>
+                        </div>
+                        <div class="request-url">${request.url.length > 60 ? request.url.substring(0, 60) + '...' : request.url}</div>
+                        <div class="request-time">${request.timestamp.toLocaleTimeString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectRequest(requestId) {
+            selectedRequest = requests.find(r => r.id == requestId);
+
+            // Update selection visual
+            document.querySelectorAll('.request-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.closest('.request-item').classList.add('selected');
+
+            showEditor();
+        }
+
+        function showEditor() {
+            const editorArea = document.getElementById('editorArea');
+
+            editorArea.innerHTML = `
+                <div class="form-group">
+                    <label>Méthode HTTP:</label>
+                    <select id="editMethod">
+                        <option value="GET" ${selectedRequest.method === 'GET' ? 'selected' : ''}>GET</option>
+                        <option value="POST" ${selectedRequest.method === 'POST' ? 'selected' : ''}>POST</option>
+                        <option value="PUT" ${selectedRequest.method === 'PUT' ? 'selected' : ''}>PUT</option>
+                        <option value="DELETE" ${selectedRequest.method === 'DELETE' ? 'selected' : ''}>DELETE</option>
+                        <option value="PATCH" ${selectedRequest.method === 'PATCH' ? 'selected' : ''}>PATCH</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>URL:</label>
+                    <input type="text" id="editUrl" value="${selectedRequest.url}">
+                </div>
+
+                <div class="form-group">
+                    <label>Headers (JSON):</label>
+                    <textarea id="editHeaders">${JSON.stringify(selectedRequest.headers, null, 2)}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Body:</label>
+                    <textarea id="editBody">${selectedRequest.body || ''}</textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="sendModifiedRequest()">🚀 Envoyer Requête</button>
+                    <button class="btn btn-primary" onclick="resetEditor()">🔄 Réinitialiser</button>
+                    <button class="btn btn-danger" onclick="dropRequest()">🗑️ Ignorer Requête</button>
+                </div>
+            `;
+        }
+
+        function sendModifiedRequest() {
+            try {
+                const headersText = document.getElementById('editHeaders').value;
+                let headers = {};
+
+                // Essayer de parser les headers JSON
+                try {
+                    headers = JSON.parse(headersText);
+                } catch (e) {
+                    log('❌ Erreur parsing headers JSON: ' + e.message);
+                    alert('Erreur dans le format JSON des headers. Vérifiez la syntaxe.');
+                    return;
+                }
+
+                const modifiedRequest = {
+                    id: selectedRequest.id,
+                    method: document.getElementById('editMethod').value,
+                    url: document.getElementById('editUrl').value,
+                    headers: headers,
+                    body: document.getElementById('editBody').value,
+                    action: "send"
+                };
+
+                // Envoyer les modifications au proxy via WebSocket
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const message = JSON.stringify({
+                        type: 'modify_request',
+                        data: modifiedRequest
+                    });
+
+                    log('📤 Envoi de la modification: ' + message.substring(0, 200) + '...');
+                    ws.send(message);
+
+                    // Mettre à jour le status de la requête localement
+                    selectedRequest.status = 'sent';
+                    updateRequestsList();
+
+                    log(`🚀 Requête envoyée avec modifications: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
+                    log(`   -> ID: ${modifiedRequest.id}`);
+                    log(`   -> Nouvelle méthode: ${modifiedRequest.method}`);
+                    log(`   -> Nouvelle URL: ${modifiedRequest.url}`);
+                    log(`   -> Body modifié: ${modifiedRequest.body ? 'Oui' : 'Non'}`);
+                } else {
+                    log('❌ Impossible d\'envoyer - WebSocket déconnecté');
+                }
+            } catch (error) {
+                log('❌ Erreur lors de l\'envoi: ' + error.message);
+            }
+        }
+
+        function dropRequest() {
+            if (!selectedRequest) return;
+
+            const dropData = {
+                id: selectedRequest.id,
+                action: "drop"
+            };
+
+            // Envoyer l'action d'ignorer au proxy
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'modify_request',
+                    data: dropData
+                }));
+
+                // Mettre à jour le status localement
+                selectedRequest.status = 'dropped';
+                updateRequestsList();
+
+                log(`🗑️ Requête ignorée: ${selectedRequest.method} ${new URL(selectedRequest.url).hostname}`);
+            } else {
+                log('❌ Impossible d\'ignorer - WebSocket déconnecté');
+            }
+        }
+
+        function resetEditor() {
+            showEditor();
+        }
+
+        function updateRequestCount() {
+            document.getElementById('requestCount').textContent = `${requests.length} requête(s)`;
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pauseBtn');
+
+            if (isPaused) {
+                btn.textContent = '▶️ Reprendre';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+            } else {
+                btn.textContent = '⏸️ Pause';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'pause',
+                    data: isPaused
+                }));
+            }
+
+            log(isPaused ? '⏸️ Interception en pause' : '▶️ Interception reprise');
+        }
+
+        function clearRequests() {
+            requests = [];
+            selectedRequest = null;
+            updateRequestsList();
+            updateRequestCount();
+
+            document.getElementById('editorArea').innerHTML = `
+                <div class="no-selection">
+                    <p>👆 Sélectionnez une requête à gauche pour la modifier</p>
+                </div>
+            `;
+
+            log('🗑️ Liste des requêtes vidée');
+        }
+
+        // Event listeners
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('clearBtn').addEventListener('click', clearRequests);
+
+        // Start connection
+        connectWebSocket();
+        log('🚀 Démarrage de l\'interface de modification');
+    </script>
+</body>
+</html>
+

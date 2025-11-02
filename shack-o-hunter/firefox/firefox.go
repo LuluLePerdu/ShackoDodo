@@ -182,8 +182,18 @@ func Start() {
 		log.Fatalf("Firefox Profile: %v", err)
 	}
 
+	// Obtenir le chemin absolu vers la page de test
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	testPagePath := filepath.Join(exeDir, "..", "test-page.html")
+
+	// Convertir en URL file://
+	testPageURL := "file:///" + strings.ReplaceAll(testPagePath, "\\", "/")
+
+	log.Printf("Ouverture de Firefox avec la page de test: %s", testPageURL)
+
 	firefoxPath := `C:\Program Files\Mozilla Firefox\firefox.exe`
-	cmd := exec.Command(firefoxPath, "-no-remote", "-profile", prof, "http://example.com")
+	cmd := exec.Command(firefoxPath, "-no-remote", "-profile", prof, testPageURL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
