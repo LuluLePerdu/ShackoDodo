@@ -12,6 +12,21 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Fonction pour lancer un navigateur depuis l'UI
+func launchBrowserFromUI(browserName string) {
+	// Import dynamique du module browsers pour éviter les dépendances circulaires
+	// On utilisera une interface ou un channel pour communiquer avec le module browsers
+	BrowserLaunchChannel <- BrowserLaunchRequest{
+		Browser: browserName,
+	}
+}
+
+type BrowserLaunchRequest struct {
+	Browser string
+}
+
+var BrowserLaunchChannel = make(chan BrowserLaunchRequest, 10)
+
 // Hub maintains the set of active clients
 type Hub struct {
 	// Registered clients
@@ -109,6 +124,15 @@ func (c *Client) readPump() {
 				}
 			} else {
 				log.Printf("Invalid data for pause type: %v", msg.Data)
+			}
+		case "launch_browser":
+			// Lancement d'un navigateur spécifique
+			if browserData, ok := msg.Data.(map[string]interface{}); ok {
+				browserName := getString(browserData, "browser")
+				log.Printf("Received browser launch request: %s", browserName)
+
+				// Déléguer le lancement au module browsers
+				go launchBrowserFromUI(browserName)
 			}
 		case "resume_all":
 			// Envoyer toutes les requêtes en attente

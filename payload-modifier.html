@@ -287,6 +287,12 @@
                 <button class="btn btn-danger" id="clearBtn">Vider</button>
                 <span id="requestCount">0 requête(s)</span>
             </div>
+
+            <div class="browser-controls" style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-info" onclick="launchBrowserFromModifier('firefox')" style="font-size: 12px; padding: 6px 12px;">🦊 Firefox</button>
+                <button class="btn btn-info" onclick="launchBrowserFromModifier('chrome')" style="font-size: 12px; padding: 6px 12px;">🌐 Chrome</button>
+                <button class="btn btn-info" onclick="launchBrowserFromModifier('edge')" style="font-size: 12px; padding: 6px 12px;">🔷 Edge</button>
+            </div>
         </div>
 
         <div class="main-content">
@@ -675,7 +681,22 @@
         // Start connection
         connectWebSocket();
         log('Démarrage de l\'interface de modification');
+
+        function launchBrowserFromModifier(browser) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('Proxy non connecté pour lancer ' + browser);
+                return;
+            }
+
+            ws.send(JSON.stringify({
+                type: 'launch_browser',
+                data: {
+                    browser: browser
+                }
+            }));
+
+            log('Commande de lancement envoyée: ' + browser);
+        }
     </script>
 </body>
 </html>
-
