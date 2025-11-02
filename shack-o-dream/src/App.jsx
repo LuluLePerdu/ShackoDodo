@@ -8,8 +8,9 @@ import StickyHeadTable from "./tableaux.jsx";
 import theme from './customTheme.js';
 import { ThemeProvider } from '@mui/material/styles';
 import useWebSocket, {ReadyState} from "react-use-websocket";
-import {Box, Typography} from "@mui/material";
+import {Box, Tooltip, Typography} from "@mui/material";
 import {BrowserDialog} from "./dialog.jsx";
+import {grey} from "@mui/material/colors";
 
 
 function App() {
@@ -196,64 +197,70 @@ function App() {
                               </Typography>
                           </Box>
                       </Box>
-                      <Button onClick={play}><FaPlay/></Button>
-                      <Button onClick={pause}><FaPause/></Button>
-                      <Button onClick={foward}><FaForward/></Button>
-                      <Button
-                          onClick={play}
-                          variant="text"
-                          disabled={readyState !== ReadyState.OPEN}
-                          sx={{
-                              backgroundColor: 'transparent',
-                              color: !isPaused ? '#000000' : '#4caf50',
-                              border: 'none',
-                              boxShadow: 'none',
-                              '&:hover': {
-                                  backgroundColor: 'rgba(0,0,0,0.04)',
-                                  boxShadow: 'none'
-                              }
-                          }}
-                      >
-                          <FaPlay/>
-                      </Button>
-                      <Button
-                          onClick={pause}
-                          variant="text"
-                          disabled={readyState !== ReadyState.OPEN}
-                          sx={{
-                              backgroundColor: 'transparent',
-                              color: isPaused ? '#000000' : '#4caf50',
-                              border: 'none',
-                              boxShadow: 'none',
-                              '&:hover': {
-                                  backgroundColor: 'rgba(0,0,0,0.04)',
-                                  boxShadow: 'none'
-                              }
-                          }}
-                      >
-                          <FaPause/>
-                      </Button>
-                      <Button
-                          onClick={foward}
-                          variant="text"
-                          disabled={readyState !== ReadyState.OPEN}
-                          title="Envoyer toutes les requêtes en attente"
-                          sx={{
-                              backgroundColor: 'transparent',
-                              color: '#4caf50',
-                              border: 'none',
-                              boxShadow: 'none',
-                              '&:hover': {
-                                  backgroundColor: 'rgba(0,0,0,0.04)',
-                                  boxShadow: 'none'
-                              }
-                          }}
-                      >
-                          <FaForward/>
-                      </Button>
+                      <Tooltip title="Reprendre la réception de requêtes">
+                          <Button
+                              onClick={play}
+                              variant="text"
+                              disabled={readyState !== ReadyState.OPEN}
+                              sx={{
+                                  backgroundColor: 'transparent',
+                                  color: !isPaused ? grey[500] : '#00FF00',
+                                  border: 'none',
+                                  boxShadow: 'none',
+                                  '&:hover': {
+                                      backgroundColor: 'rgba(0,0,0,0.04)',
+                                      boxShadow: 'none'
+                                  }
+                              }}
+                          >
+                              <FaPlay/>
+                          </Button>
+                      </Tooltip>
+                      <Tooltip title="Mettre sur pause la réceptions de requêtes">
+                          <Button
+                              onClick={pause}
+                              variant="text"
+                              disabled={readyState !== ReadyState.OPEN}
+                              sx={{
+                                  backgroundColor: 'transparent',
+                                  color: isPaused ? grey[500] : '#00FF00',
+                                  border: 'none',
+                                  boxShadow: 'none',
+                                  '&:hover': {
+                                      backgroundColor: 'rgba(0,0,0,0.04)',
+                                      boxShadow: 'none'
+                                  }
+                              }}
+                          >
+                              <FaPause/>
+                          </Button>
+                      </Tooltip>
+                      <Tooltip title="Envoyer toutes les requêtes en attente">
+                          <Button
+                              onClick={foward}
+                              variant="text"
+                              disabled={readyState !== ReadyState.OPEN}
+                              sx={{
+                                  backgroundColor: 'transparent',
+                                  color: '#00FF00',
+                                  border: 'none',
+                                  boxShadow: 'none',
+                                  '&:hover': {
+                                      backgroundColor: 'rgba(0,0,0,0.04)',
+                                      boxShadow: 'none'
+                                  }
+                              }}
+                          >
+                              <FaForward/>
+                          </Button>
+                      </Tooltip>
                   </div>
-                  <Button onClick={clear}>Supprimer toutes les requêtes</Button>
-                  <Button disabled={readyState !== ReadyState.OPEN} onClick={newTab}>Nouvel onglet</Button>
+                  <Tooltip title="Supprimer toutes les requêtes">
+                    <Button disabled={readyState !== ReadyState.OPEN || items.length === 0} onClick={clear}>Supprimer toutes les requêtes</Button>
+                  </Tooltip>
+                  <Tooltip title="Ouvrir une nouvelle connexion">
+                    <Button disabled={readyState !== ReadyState.OPEN} onClick={newTab}>Nouvelle connexion</Button>
+                  </Tooltip>
                   <BrowserDialog
                       open={browserDialogOpen}
                       onClose={handleBrowserDialogClose}

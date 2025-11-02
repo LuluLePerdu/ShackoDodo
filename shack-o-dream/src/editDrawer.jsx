@@ -6,6 +6,7 @@ import TextField from '@mui/material/TextField';
 import Drawer from '@mui/material/Drawer';
 import { MdClose } from 'react-icons/md';
 import {ReadyState} from "react-use-websocket";
+import {grey} from "@mui/material/colors";
 
 export default function EditDrawer({ open, onClose, selectedRow, selectedItem, sendModifiedRequest, dropRequest, readyState }) {
     const [textValue, setTextValue] = React.useState('');
@@ -90,8 +91,8 @@ export default function EditDrawer({ open, onClose, selectedRow, selectedItem, s
 
                 {selectedItem?.status !== 'pending' && (
                     <div style={{
-                        backgroundColor: '#fff3cd',
-                        border: '1px solid #ffeaa7',
+                        backgroundColor: grey[600],
+                        border: '1px solid' + grey[600],
                         borderRadius: '4px',
                         padding: '15px',
                         margin: '15px 25px',
