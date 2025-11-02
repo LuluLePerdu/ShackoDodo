@@ -9,6 +9,7 @@ import theme from './customTheme.js';
 import { ThemeProvider } from '@mui/material/styles';
 import useWebSocket, {ReadyState} from "react-use-websocket";
 import {Box, Typography} from "@mui/material";
+import {BrowserDialog} from "./dialog.jsx";
 
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
     const { sendMessage, lastMessage, readyState } = useWebSocket(WS_URL);
     const [items, setItems] = React.useState([]);
     const [isPaused, setIsPaused] = React.useState(false);
+    const [browserDialogOpen, setBrowserDialogOpen] = React.useState(false);
 
     React.useEffect(() => {
         if (lastMessage !== null) {
@@ -75,17 +77,6 @@ function App() {
         }
     }
 
-    function newTab() {
-        if (readyState === ReadyState.OPEN) {
-            sendMessage(JSON.stringify({
-                type: 'launch_browser',
-                data: {
-                    browser: 'firefox'
-                }
-            }));
-        }
-    }
-
     function sendModifiedRequest(modifiedRequest) {
         console.log('sendModifiedRequest called with:', modifiedRequest);
         console.log('readyState:', readyState);
@@ -112,6 +103,34 @@ function App() {
                 item.id === id ? {...item, status: newStatus} : item
             )
         );
+    }
+    
+    function launchBrowser(browserName) {
+        if (readyState === ReadyState.OPEN) {
+            sendMessage(JSON.stringify({
+                type: 'launch_browser',
+                data: {
+                    browser: browserName
+                }
+            }));
+        }
+    }
+
+    const handleOpenBrowserDialog = () => {
+        setBrowserDialogOpen(true);
+    };
+
+
+    const handleBrowserDialogClose = (browser) => {
+        setBrowserDialogOpen(false);
+        if (browser) {
+            launchBrowser(browser);
+        }
+    };
+
+
+    function newTab() {
+        handleOpenBrowserDialog();
     }
 
     const connectionStatus = {
@@ -232,12 +251,11 @@ function App() {
                       </Button>
                   </div>
                   <Button onClick={clear}>Supprimer toutes les requêtes</Button>
-                  <Button
-                      onClick={newTab}
-                      disabled={readyState !== ReadyState.OPEN}
-                  >
-                      Nouvel onglet
-                  </Button>
+                  <Button disabled={readyState !== ReadyState.OPEN} onClick={newTab}>Nouvel onglet</Button>
+                  <BrowserDialog
+                      open={browserDialogOpen}
+                      onClose={handleBrowserDialogClose}
+                  />
               </div>
               <StickyHeadTable
                   items={items}
