@@ -71,10 +71,6 @@ export default function StickyHeadTable({items, handleDeleteItem, sendModifiedRe
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
             <TableContainer sx={{ maxHeight: '70vh',
                 overflowX: 'auto',
-                transition: 'transform 0.5s ease',
-                transform: drawerOpen
-                    ? 'translateX(0) scaleX(0.8)'
-                    : 'translateX(0) scaleX(1)',
                 transformOrigin: 'left center',
             }}>
                 <Table stickyHeader aria-label="sticky table" size="small">
