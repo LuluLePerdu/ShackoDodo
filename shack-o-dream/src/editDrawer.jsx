@@ -42,7 +42,7 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
                 open={open}
             >
                 <DrawerHeader>
-                    <Button color="cancel" onClick={onClose}><MdClose/></Button>
+                    <Button color="cancel" onClick={onClose} sx={{ color: 'white' }}><MdClose/></Button>
 
                 </DrawerHeader>
                 <form onSubmit={handleSubmit} id="edit-request-form" style={{ marginRight: 25, marginLeft: 25}}>
