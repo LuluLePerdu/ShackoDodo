@@ -195,6 +195,30 @@
     </div>
 
     <script>
+        let ws = null;
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8182/ws');
+
+                ws.onopen = function() {
+                    showStatus('Connecté au proxy ShackoDodo', 'success');
+                };
+
+                ws.onclose = function() {
+                    showStatus('Connexion au proxy fermée', 'error');
+                    setTimeout(connectWebSocket, 3000);
+                };
+
+                ws.onerror = function() {
+                    showStatus('Erreur de connexion WebSocket', 'error');
+                };
+            } catch (e) {
+                showStatus('Impossible de se connecter au proxy: ' + e.message, 'error');
+                setTimeout(connectWebSocket, 3000);
+            }
+        }
+
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
             const statusText = document.getElementById('statusText');
@@ -205,43 +229,60 @@
             if (type === 'error') {
                 status.style.background = '#ffebee';
                 status.style.borderColor = '#f44336';
-            } else {
+            } else if (type === 'success') {
                 status.style.background = '#e8f5e8';
                 status.style.borderColor = '#27ae60';
+            } else {
+                status.style.background = '#fff3cd';
+                status.style.borderColor = '#ffeaa7';
             }
         }
 
         function launchBrowser(browser) {
-            showStatus(`Tentative de lancement de ${browser}...`);
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showStatus('Proxy non connecté. Démarrez proxy-interceptor.exe d\'abord.', 'error');
+                return;
+            }
 
-            // Simulation - en réalité, ceci nécessiterait une communication avec le proxy
+            showStatus(`Lancement de ${browser}...`, 'info');
+
+            // Envoyer la commande de lancement via WebSocket
+            ws.send(JSON.stringify({
+                type: 'launch_browser',
+                data: {
+                    browser: browser
+                }
+            }));
+
             setTimeout(() => {
-                showStatus(`${browser} devrait être lancé maintenant. Vérifiez votre barre des tâches.`);
-            }, 1000);
+                showStatus(`Commande de lancement de ${browser} envoyée au proxy`, 'success');
+            }, 500);
         }
 
         function launchAllBrowsers() {
-            showStatus('Lancement de tous les navigateurs disponibles...');
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showStatus('Proxy non connecté. Démarrez proxy-interceptor.exe d\'abord.', 'error');
+                return;
+            }
+
+            showStatus('Lancement de tous les navigateurs...', 'info');
+
+            // Envoyer la commande de lancement de tous les navigateurs
+            ws.send(JSON.stringify({
+                type: 'launch_browser',
+                data: {
+                    browser: 'all'
+                }
+            }));
 
             setTimeout(() => {
-                showStatus('Tous les navigateurs disponibles ont été lancés.');
-            }, 1500);
+                showStatus('Commande de lancement de tous les navigateurs envoyée', 'success');
+            }, 500);
         }
 
-        // Vérifier si le proxy est en marche
-        function checkProxyStatus() {
-            fetch('http://localhost:8182/ws')
-                .then(() => {
-                    showStatus('Proxy ShackoDodo détecté et en marche!');
-                })
-                .catch(() => {
-                    showStatus('Proxy non détecté. Assurez-vous que proxy-interceptor.exe est en marche.', 'error');
-                });
-        }
-
-        // Vérifier le statut au chargement de la page
+        // Se connecter au WebSocket au chargement de la page
         window.addEventListener('load', () => {
-            setTimeout(checkProxyStatus, 500);
+            setTimeout(connectWebSocket, 500);
         });
     </script>
 </body>
