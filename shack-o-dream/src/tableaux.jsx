@@ -13,13 +13,9 @@ import IconButton from '@mui/material/IconButton';
 
 
 const columns = [
-    { id: 'id', label: 'ID', minWidth: 75 },
     { id: 'url', label: 'URL', minWidth: 100 },
     { id: 'method', label: 'Méthode', minWidth: 75},
-    { id: 'path', label: 'Chemin', minWidth: 100},
-    { id: 'query', label: 'Requête', minWidth: 100},
     { id: 'status', label: 'Statut', minWidth: 75}
-
 ];
 
 function createData(id, url, method, path, query, status) {
@@ -106,7 +102,7 @@ export default function StickyHeadTable({items, handleDeleteItem}) {
                                             return (
                                                 <TableCell key={column.id} align={column.align} onClick={() => handleRowClick(row)}>
                                                     {column.id === 'url' && typeof value === 'string' && value.length > 50
-                                                        ? `${value.substring(0, 50)}...`
+                                                        ? `${value.substring(0, 100)}...`
                                                         : column.format && typeof value === 'number'
                                                             ? column.format(value)
                                                             : value}
