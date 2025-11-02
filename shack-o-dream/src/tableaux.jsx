@@ -105,9 +105,11 @@ export default function StickyHeadTable({items, handleDeleteItem}) {
                                             const value = row[column.id];
                                             return (
                                                 <TableCell key={column.id} align={column.align} onClick={() => handleRowClick(row)}>
-                                                    {column.format && typeof value === 'number'
-                                                        ? column.format(value)
-                                                        : value}
+                                                    {column.id === 'url' && typeof value === 'string' && value.length > 50
+                                                        ? `${value.substring(0, 50)}...`
+                                                        : column.format && typeof value === 'number'
+                                                            ? column.format(value)
+                                                            : value}
                                                 </TableCell>
                                             );
                                         })}
