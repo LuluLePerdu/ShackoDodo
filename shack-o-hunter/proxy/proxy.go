@@ -180,21 +180,6 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 		log.Printf("Request: %s %s", req.Method, fullURL)
 	}
 
-	// Specific logic for HTTP login request
-	if !isHTTPS && req.URL.String() == "http://localhost:5000/login" {
-		if req.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
-			form, err := url.ParseQuery(string(body))
-			if err == nil {
-				if form.Has("username") && form.Has("password") {
-					time.Sleep(3 * time.Second)
-					form.Set("username", "admin")
-					form.Set("password", "password123")
-					body = []byte(form.Encode())
-				}
-			}
-		}
-	}
-
 	if !shouldFilter {
 		requestID := uuid.New().String()
 
