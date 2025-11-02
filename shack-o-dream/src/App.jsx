@@ -75,7 +75,7 @@ function App() {
                   <Button onClick={clear}>Supprimer toutes les requêtes</Button>
                   <Button onClick={newTab}>Nouvel onglet</Button>
               </div>
-              <StickyHeadTable items={items} />
+              <StickyHeadTable items={items} handleDeleteItem={removeItem}/>
               <script type="module" src="/src/tableaux.jsx"></script>
           </>
       </ThemeProvider>
