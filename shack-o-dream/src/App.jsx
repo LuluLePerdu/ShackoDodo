@@ -9,12 +9,6 @@ import theme from './customTheme.js';
 import { ThemeProvider } from '@mui/material/styles';
 import useWebSocket, {ReadyState} from "react-use-websocket";
 
-function play() {}
-
-function pause() {}
-
-function newTab() {}
-
 
 function App() {
     const WS_URL = `ws://127.0.0.1:8182/ws`;
@@ -31,6 +25,17 @@ function App() {
             }
         }
     }, [lastMessage]);
+
+    function clear(){
+        while(items.length > 0){
+            items.pop();
+        }
+    }
+    function play() {}
+
+    function pause() {}
+
+    function newTab() {}
 
     const connectionStatus = {
         [ReadyState.CONNECTING]: 'Connecting',
@@ -64,9 +69,10 @@ function App() {
           <>
               <div className="top">
                   <div>
-                    <Button onClick={play()}><FaPlay/></Button>
-                    <Button onClick={pause()}><FaPause/></Button>
+                    <Button onClick={play}><FaPlay/></Button>
+                    <Button onClick={pause}><FaPause/></Button>
                   </div>
+                  <Button onClick={clear}>Supprimer toutes les requêtes</Button>
                   <Button onClick={newTab}>Nouvel onglet</Button>
               </div>
               <StickyHeadTable items={items} />
