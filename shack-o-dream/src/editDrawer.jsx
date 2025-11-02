@@ -81,7 +81,7 @@ export default function EditDrawer({ open, onClose, selectedRow, selectedItem, s
                 open={open}
             >
                 <DrawerHeader>
-                    <Button color="cancel" onClick={onClose}><MdClose/></Button>
+                    <Button color="cancel" onClick={onClose} sx={{ color: 'white' }}><MdClose/></Button>
                 </DrawerHeader>
 
                 {selectedItem?.status !== 'pending' && (
