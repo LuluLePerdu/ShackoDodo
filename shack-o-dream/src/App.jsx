@@ -1,35 +1,324 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import {FaForward, FaPlay} from "react-icons/fa";
+import {FaPause} from "react-icons/fa";
+
+import * as React from 'react';
+import Button from '@mui/material/Button';
+import StickyHeadTable from "./tableaux.jsx";
+import theme from './customTheme.js';
+import {ThemeProvider} from '@mui/material/styles';
+import useWebSocket, {ReadyState} from "react-use-websocket";
+import {Box, Tooltip, Typography} from "@mui/material";
+import {BrowserDialog} from "./dialog.jsx";
+import {grey} from "@mui/material/colors";
+import {useState} from "react";
+import TenorGifButton, {FleeingCloseButton} from "./gif.jsx";
+import musicTrack from './assets/Shack-o-Hunter.mp3';
+
+
 
 function App() {
-  const [count, setCount] = useState(0)
+    const WS_URL = `ws://127.0.0.1:8182/ws`;
+    const {sendMessage, lastMessage, readyState} = useWebSocket(WS_URL);
+    const [items, setItems] = React.useState([]);
+    const [isPaused, setIsPaused] = React.useState(false);
+    const [browserDialogOpen, setBrowserDialogOpen] = React.useState(false);
+    const audioRef = React.useRef(null);
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    React.useEffect(() => {
+        audioRef.current = new Audio(musicTrack);
+
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (lastMessage !== null) {
+            try {
+                const parsed = JSON.parse(lastMessage.data);
+                addItem(createData(parsed.id, parsed.data.url, parsed.data.method, "", "", parsed.data.status || "passthrough", parsed));
+            } catch (err) {
+                console.error("Error parsing WebSocket message:", err, lastMessage.data);
+            }
+        }
+    }, [lastMessage]);
+
+    function clear() {
+        setItems([]);
+    }
+
+    function play() {
+        if (readyState === ReadyState.OPEN) {
+
+            setIsPaused(false);
+            sendMessage(JSON.stringify({
+                type: 'pause',
+                data: false
+            }));
+
+            setItems(prevItems =>
+                prevItems.map(item => ({
+                    ...item,
+                    status: item.status === 'pending' ? 'sent' : item.status
+                }))
+            );
+
+
+            if (Math.random() < 0.1 && audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch((err) => {
+                    console.warn('Unable to start music playback:', err);
+                });
+                handleGif();
+
+            }
+        }
+    }
+
+    function pause() {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+
+        if (readyState === ReadyState.OPEN) {
+            setIsPaused(true);
+            sendMessage(JSON.stringify({
+                type: 'pause',
+                data: true
+            }));
+        }
+    }
+
+    function foward() {
+        if (readyState === ReadyState.OPEN) {
+            sendMessage(JSON.stringify({
+                type: 'resume_all',
+                data: true
+            }));
+
+            setItems(prevItems =>
+                prevItems.map(item => ({
+                    ...item,
+                    status: item.status === 'pending' ? 'sent' : item.status
+                }))
+            );
+        }
+    }
+
+    function sendModifiedRequest(modifiedRequest) {
+        console.log('sendModifiedRequest called with:', modifiedRequest);
+        console.log('readyState:', readyState);
+
+        if (readyState === ReadyState.OPEN) {
+            // Extract ID from modifiedRequest and send it at message level
+            const {id, ...requestData} = modifiedRequest;
+            const message = JSON.stringify({
+                type: 'modify_request',
+                id: id,
+                data: requestData
+            });
+
+            console.log('Sending WebSocket message:', message);
+            sendMessage(message);
+            updateItemStatus(id, 'sent');
+            console.log('Item status updated to sent for id:', id);
+        } else {
+            console.log('WebSocket not open, readyState:', readyState);
+        }
+    }
+
+    function updateItemStatus(id, newStatus) {
+        setItems(prevItems =>
+            prevItems.map(item =>
+                item.id === id ? {...item, status: newStatus} : item
+            )
+        );
+    }
+
+    function launchBrowser(browserName) {
+        if (readyState === ReadyState.OPEN) {
+            sendMessage(JSON.stringify({
+                type: 'launch_browser',
+                data: {
+                    browser: browserName
+                }
+            }));
+        }
+    }
+
+    const handleOpenBrowserDialog = () => {
+        setBrowserDialogOpen(true);
+    };
+
+
+    const handleBrowserDialogClose = (browser) => {
+        setBrowserDialogOpen(false);
+        if (browser) {
+            launchBrowser(browser);
+        }
+    };
+
+
+    function newTab() {
+        handleOpenBrowserDialog();
+    }
+
+    const connectionStatus = {
+        [ReadyState.CONNECTING]: 'En connexion...',
+        [ReadyState.OPEN]: 'Ouverte',
+        [ReadyState.CLOSING]: 'Fermeture...',
+        [ReadyState.CLOSED]: 'Fermé',
+        [ReadyState.UNINSTANTIATED]: 'Non instancié',
+    }[readyState];
+
+    const handleClickSendMessage = () => {
+        if (readyState === ReadyState.OPEN) {
+            sendMessage('Hello from React!');
+        }
+    };
+
+    function createData(id, url, method, path, query, status, data) {
+        return {id, url, method, path, query, status, data};
+    }
+
+    const addItem = (newItem) => {
+        setItems([newItem, ...items]);
+    };
+
+    const removeItem = (idToRemove) => {
+        setItems(items.filter(item => item.id !== idToRemove));
+    };
+
+    const getDotColor = () => {
+        switch (readyState) {
+            case ReadyState.OPEN:
+                return "green";
+            case ReadyState.CONNECTING:
+                return "yellow";
+            case ReadyState.CLOSED:
+            case ReadyState.CLOSING:
+                return "red";
+            default:
+                return "gray";
+        }
+    };
+
+    const [showGif, setShowGif] = useState(false);
+
+
+    const handleGif = () => {
+        setShowGif(true);
+    };
+
+
+    return (
+        <ThemeProvider theme={theme}>
+            <>
+                <TenorGifButton open={showGif}/>
+                <FleeingCloseButton open={showGif} onClose={() => setShowGif(false)}/>
+
+                <div className="top">
+                    <div>
+                        <Box p={2}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                                <Box
+                                    sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: "50%",
+                                        backgroundColor: getDotColor(),
+                                    }}
+                                />
+                                <Typography variant="body2">
+                                    Connexion: {connectionStatus}
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Tooltip title="Reprendre la réception de requêtes">
+                            <Button
+                                onClick={play}
+                                variant="text"
+                                disabled={readyState !== ReadyState.OPEN}
+                                sx={{
+                                    backgroundColor: 'transparent',
+                                    color: !isPaused ? grey[500] : '#00FF00',
+                                    border: 'none',
+                                    boxShadow: 'none',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0,0,0,0.04)',
+                                        boxShadow: 'none'
+                                    }
+                                }}
+                            >
+                                <FaPlay/>
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Mettre sur pause la réceptions de requêtes">
+                            <Button
+                                onClick={pause}
+                                variant="text"
+                                disabled={readyState !== ReadyState.OPEN}
+                                sx={{
+                                    backgroundColor: 'transparent',
+                                    color: isPaused ? grey[500] : '#00FF00',
+                                    border: 'none',
+                                    boxShadow: 'none',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0,0,0,0.04)',
+                                        boxShadow: 'none'
+                                    }
+                                }}
+                            >
+                                <FaPause/>
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Envoyer toutes les requêtes en attente">
+                            <Button
+                                onClick={foward}
+                                variant="text"
+                                disabled={readyState !== ReadyState.OPEN}
+                                sx={{
+                                    backgroundColor: 'transparent',
+                                    color: '#00FF00',
+                                    border: 'none',
+                                    boxShadow: 'none',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0,0,0,0.04)',
+                                        boxShadow: 'none'
+                                    }
+                                }}
+                            >
+                                <FaForward/>
+                            </Button>
+                        </Tooltip>
+                    </div>
+                    <Tooltip title="Supprimer toutes les requêtes">
+                        <Button disabled={readyState !== ReadyState.OPEN || items.length === 0} onClick={clear}>Supprimer
+                            toutes les requêtes</Button>
+                    </Tooltip>
+                    <Tooltip title="Ouvrir une nouvelle connexion">
+                        <Button disabled={readyState !== ReadyState.OPEN} onClick={newTab}>Nouvelle connexion</Button>
+                    </Tooltip>
+                    <BrowserDialog
+                        open={browserDialogOpen}
+                        onClose={handleBrowserDialogClose}
+                    />
+                </div>
+                <StickyHeadTable
+                    items={items}
+                    handleDeleteItem={removeItem}
+                    sendModifiedRequest={sendModifiedRequest}
+                    readyState={readyState}
+                />
+                <script type="module" src="/src/tableaux.jsx"></script>
+            </>
+        </ThemeProvider>
+    )
 }
 
 export default App
