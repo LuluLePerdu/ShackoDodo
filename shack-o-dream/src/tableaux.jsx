@@ -44,7 +44,7 @@ const rows = [
     createData('Brazil', 'BR', 210147125, 8515767),
 ];
 
-export default function StickyHeadTable({items, handleDeleteItem}) {
+export default function StickyHeadTable({items, handleDeleteItem, sendModifiedRequest, readyState}) {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [selectedRow, setSelectedRow] = React.useState(null);
@@ -61,6 +61,7 @@ export default function StickyHeadTable({items, handleDeleteItem}) {
     };
 
     const handleRowClick = (row) => {
+        console.log('Row clicked:', row);
         setSelectedRow(row);
         setDrawerOpen(true);
     };
@@ -132,6 +133,9 @@ export default function StickyHeadTable({items, handleDeleteItem}) {
                 open={drawerOpen}
                 onClose={handleDrawerClose}
                 selectedRow={selectedRow != null ? selectedRow.data : ''}
+                selectedItem={selectedRow}
+                sendModifiedRequest={sendModifiedRequest}
+                readyState={readyState}
             />
         </Paper>
 

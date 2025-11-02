@@ -5,18 +5,55 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Drawer from '@mui/material/Drawer';
 import { MdClose } from 'react-icons/md';
+import {ReadyState} from "react-use-websocket";
 
-export default function EditDrawer({ open, onClose, selectedRow }) {
-    const handleSubmit = (e) => {
-        e.preventDefault();
-    }
-
+export default function EditDrawer({ open, onClose, selectedRow, selectedItem, sendModifiedRequest, dropRequest, readyState }) {
     const [textValue, setTextValue] = React.useState('');
+
     React.useEffect(() => {
         if (selectedRow) {
             setTextValue(JSON.stringify(selectedRow, null, 2));
         }
     }, [selectedRow]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        console.log('handleSubmit called');
+        console.log('selectedItem:', selectedItem);
+        console.log('selectedRow:', selectedRow);
+        console.log('sendModifiedRequest:', sendModifiedRequest);
+
+        if (!selectedItem || !sendModifiedRequest) {
+            console.log('Missing selectedItem or sendModifiedRequest');
+            return;
+        }
+
+        try {
+            const modifiedData = JSON.parse(textValue);
+            console.log('Parsed modifiedData:', modifiedData);
+
+            const requestData = modifiedData.data || modifiedData;
+
+            const modifiedRequest = {
+                id: selectedItem.id,
+                method: requestData.method || 'GET',
+                url: requestData.url || '',
+                headers: requestData.headers || {},
+                body: requestData.body || '',
+                action: "send"
+            };
+
+            console.log('Sending modifiedRequest:', modifiedRequest);
+
+            sendModifiedRequest(modifiedRequest);
+            onClose();
+
+        } catch (error) {
+            console.error('Error in handleSubmit:', error);
+            alert('Erreur dans le format JSON: ' + error.message);
+        }
+    };
 
     const DrawerHeader = styled('div')(({ theme }) => ({
         display: 'flex',
@@ -26,6 +63,8 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
         ...theme.mixins.toolbar,
         justifyContent: 'flex-start',
     }));
+
+    const isDisabled = readyState !== ReadyState.OPEN || selectedItem?.status !== 'pending';
 
     return (
         <>
@@ -43,8 +82,22 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
             >
                 <DrawerHeader>
                     <Button color="cancel" onClick={onClose}><MdClose/></Button>
-
                 </DrawerHeader>
+
+                {selectedItem?.status !== 'pending' && (
+                    <div style={{
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffeaa7',
+                        borderRadius: '4px',
+                        padding: '15px',
+                        margin: '15px 25px',
+                        fontSize: '14px'
+                    }}>
+                        <strong>Attention:</strong> Cette requête ne peut pas être modifiée (statut: {selectedItem?.status}).
+                        Seules les requêtes en statut "pending" peuvent être modifiées.
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} id="edit-request-form" style={{ marginRight: 25, marginLeft: 25}}>
                     <TextField
                         multiline
@@ -56,6 +109,7 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
                         label="Requête"
                         type="text"
                         fullWidth
+                        disabled={isDisabled}
                         sx={{ '.MuiInputBase-input': {
                                 //fontFamily: 'monospace',
                                 fontFamily: '"Cascadia Code"'// Change font family
@@ -85,7 +139,7 @@ export default function EditDrawer({ open, onClose, selectedRow }) {
                         }}
                     />
                 </form>
-                <Button color="primary" type="submit" form="edit-request-form">Modifier</Button>
+                <Button color="primary" type="submit" form="edit-request-form" disabled={isDisabled}>Modifier</Button>
             </Drawer>
         </>
     );
