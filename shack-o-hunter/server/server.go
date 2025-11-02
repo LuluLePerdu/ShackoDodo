@@ -10,14 +10,23 @@ import (
 	"time"
 )
 
-//go:embed dist
+//go:embed all:dist
 var distFS embed.FS
 
 func Start(port string) {
-	// Créer un sous-système de fichiers pour servir depuis /dist
+	// Vérifier si le dossier dist existe dans l'embed
 	distSub, err := fs.Sub(distFS, "dist")
 	if err != nil {
-		log.Printf("Warning: unable to load embedded frontend: %v", err)
+		log.Printf("Warning: Frontend non disponible (dist non trouvé). Lancez build.bat pour compiler le frontend.")
+		log.Printf("Le proxy et le WebSocket fonctionnent toujours.")
+		return
+	}
+
+	// Vérifier si le dossier dist contient des fichiers
+	entries, err := fs.ReadDir(distSub, ".")
+	if err != nil || len(entries) == 0 {
+		log.Printf("Warning: Frontend non disponible (dist vide). Lancez build.bat pour compiler le frontend.")
+		log.Printf("Le proxy et le WebSocket fonctionnent toujours.")
 		return
 	}
 

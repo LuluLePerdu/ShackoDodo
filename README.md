@@ -3,7 +3,7 @@ Hackathon A2025
 
 ## Build et Exécution
 
-### Option 1: Exécutable unique (Recommandé)
+### Option 1: Exécutable unique avec interface intégrée (Recommandé)
 
 1. **Build l'application complète** (Frontend React + Backend Go):
    ```bash
@@ -24,10 +24,22 @@ Hackathon A2025
 L'application va:
 - Démarrer le proxy sur le port 8181
 - Démarrer le WebSocket sur le port 8182
-- Servir l'interface React sur http://localhost:3000
+- Servir l'interface React intégrée sur http://localhost:3000
 - Ouvrir automatiquement le navigateur
 
-### Option 2: Développement séparé
+### Option 2: Compilation rapide du backend seul
+
+Si vous voulez juste compiler le backend Go sans le frontend:
+
+```bash
+cd shack-o-hunter
+go build -o ShackoDodo.exe main.go
+```
+
+Dans ce mode, le proxy et le WebSocket fonctionneront, mais l'interface web ne sera pas disponible.
+Utilisez `payload-modifier.html` et `browser-launcher.html` à la place.
+
+### Option 3: Développement séparé
 
 **Frontend (React + Vite):**
 ```bash
