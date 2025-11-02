@@ -8,6 +8,7 @@ import StickyHeadTable from "./tableaux.jsx";
 import theme from './customTheme.js';
 import { ThemeProvider } from '@mui/material/styles';
 import useWebSocket, {ReadyState} from "react-use-websocket";
+import {Box, Typography} from "@mui/material";
 
 
 function App() {
@@ -38,11 +39,11 @@ function App() {
     function newTab() {}
 
     const connectionStatus = {
-        [ReadyState.CONNECTING]: 'Connecting',
-        [ReadyState.OPEN]: 'Open',
-        [ReadyState.CLOSING]: 'Closing',
-        [ReadyState.CLOSED]: 'Closed',
-        [ReadyState.UNINSTANTIATED]: 'Uninstantiated',
+        [ReadyState.CONNECTING]: 'En connexion...',
+        [ReadyState.OPEN]: 'Ouverte',
+        [ReadyState.CLOSING]: 'Fermeture...',
+        [ReadyState.CLOSED]: 'Fermé',
+        [ReadyState.UNINSTANTIATED]: 'Non instancié',
     }[readyState];
 
     const handleClickSendMessage = () => {
@@ -63,12 +64,41 @@ function App() {
         setItems(items.filter(item => item.id !== idToRemove));
     };
 
+    const getDotColor = () => {
+        switch (readyState) {
+            case ReadyState.OPEN:
+                return "green";
+            case ReadyState.CONNECTING:
+                return "yellow";
+            case ReadyState.CLOSED:
+            case ReadyState.CLOSING:
+                return "red";
+            default:
+                return "gray";
+        }
+    };
+
 
   return (
       <ThemeProvider theme={theme}>
           <>
               <div className="top">
                   <div>
+                      <Box p={2}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                              <Box
+                                  sx={{
+                                      width: 10,
+                                      height: 10,
+                                      borderRadius: "50%",
+                                      backgroundColor: getDotColor(),
+                                  }}
+                              />
+                              <Typography variant="body2">
+                                  Connexion: {connectionStatus}
+                              </Typography>
+                          </Box>
+                      </Box>
                       <Button onClick={play}><FaPlay/></Button>
                       <Button onClick={pause}><FaPause/></Button>
                       <Button onClick={foward}><FaForward/></Button>
