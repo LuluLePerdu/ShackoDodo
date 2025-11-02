@@ -4,6 +4,7 @@ import (
 	"log"
 	"proxy-interceptor/admin"
 	"proxy-interceptor/cert"
+	"proxy-interceptor/config"
 	"proxy-interceptor/firefox"
 	"proxy-interceptor/proxy"
 	"proxy-interceptor/websocket"
@@ -23,15 +24,16 @@ func main() {
 
 	log.Println("Démarrage avec privilèges administrateur")
 
-	// Mode MITM complet pour intercepter HTTPS
-	proxy.Start()
+	// Initialiser le certificat CA AVANT de démarrer le proxy
+	if err := cert.InitCA(); err != nil {
+		log.Fatalf("Erreur initialisation CA: %v", err)
+	}
+	log.Println("Certificat CA généré/chargé avec succès")
 
-	// Petit délai pour s'assurer que le certificat CA est bien généré
-	time.Sleep(500 * time.Millisecond)
-
-	// Installer le certificat CA dans le magasin système Windows
+	// Installer le certificat CA dans le magasin système Windows AVANT tout
 	if cert.CACertPath != "" {
 		if !admin.IsCertInstalledInSystemStore("ShackoDodo Proxy CA") {
+			log.Println("Installation du certificat CA dans le magasin système Windows...")
 			if err := admin.InstallCertToSystemStore(cert.CACertPath); err != nil {
 				log.Printf("Avertissement: impossible d'installer le certificat dans le magasin système: %v", err)
 			} else {
@@ -42,7 +44,25 @@ func main() {
 		}
 	}
 
+	// Petit délai pour s'assurer que Windows a bien traité le certificat
+	time.Sleep(1 * time.Second)
+
+	// Get config instance
+	cfg := config.GetInstance()
+
+	// Maintenant démarrer le proxy
+	proxy.Start()
+	log.Printf("Proxy démarré sur 127.0.0.1:%d", cfg.ProxyPort)
+
+	// Démarrer le WebSocket
 	websocket.Start()
+	log.Println("WebSocket démarré")
+
+	// Délai pour s'assurer que tout est prêt
+	time.Sleep(1 * time.Second)
+
+	// Enfin, démarrer Firefox avec le profil configuré
+	log.Println("Lancement de Firefox...")
 	firefox.Start()
 
 	select {}

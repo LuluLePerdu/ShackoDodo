@@ -12,17 +12,13 @@ import (
 	"net/http"
 	"net/url"
 	"proxy-interceptor/cert"
+	"proxy-interceptor/config"
 	"proxy-interceptor/websocket"
 	"strings"
 	"time"
-)
 
-type RequestData struct {
-	Method  string              `json:"method"`
-	URL     string              `json:"url"`
-	Headers map[string][]string `json:"headers"`
-	Body    string              `json:"body"`
-}
+	"github.com/google/uuid"
+)
 
 var directClient = &http.Client{
 	Transport: &http.Transport{
@@ -37,6 +33,30 @@ var directClient = &http.Client{
 	},
 }
 
+// shouldFilterDomain returns true if the domain should be filtered (not logged/sent)
+func shouldFilterDomain(host string) bool {
+	host = strings.ToLower(host)
+
+	mozillaFirefoxDomains := []string{
+		"mozilla.com",
+		"mozilla.org",
+		"mozilla.net",
+		"firefox.com",
+		"firefox.org",
+		"getpocket.com",
+		"firefoxusercontent.com",
+		"services.mozilla.com",
+	}
+
+	for _, domain := range mozillaFirefoxDomains {
+		if strings.Contains(host, domain) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // handleConnection handles each incoming connection
 func handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
@@ -49,8 +69,17 @@ func handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	// Log the request
-	log.Printf("Requête: %s %s %s", req.Method, req.Host, req.URL.Path)
+	// Check if domain should be filtered before logging
+	host := req.Host
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+	shouldFilter := shouldFilterDomain(host)
+
+	// Log the request only if not filtered
+	if !shouldFilter {
+		log.Printf("Requête: %s %s %s", req.Method, req.Host, req.URL.Path)
+	}
 
 	// Handle CONNECT method for HTTPS tunneling
 	if req.Method == http.MethodConnect {
@@ -64,14 +93,17 @@ func handleConnection(clientConn net.Conn) {
 
 // handleHTTPS handles HTTPS CONNECT requests with MITM interception
 func handleHTTPS(clientConn net.Conn, req *http.Request) {
-	log.Printf("HTTPS CONNECT: %s", req.Host)
-
-	clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
-
 	host := req.Host
 	if strings.Contains(host, ":") {
 		host = strings.Split(host, ":")[0]
 	}
+
+	shouldFilter := shouldFilterDomain(host)
+	if !shouldFilter {
+		log.Printf("CONNECT: %s", req.Host)
+	}
+
+	clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
 
 	tlsCert, err := cert.GenerateCertForHost(host)
 	if err != nil {
@@ -91,7 +123,9 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 	}
 	defer tlsClientConn.Close()
 
-	log.Printf("Interception HTTPS établie pour: %s", req.Host)
+	if !shouldFilter {
+		log.Printf("HTTPS interception established for: %s", req.Host)
+	}
 
 	reader := bufio.NewReader(tlsClientConn)
 	httpsReq, err := http.ReadRequest(reader)
@@ -100,89 +134,54 @@ func handleHTTPS(clientConn net.Conn, req *http.Request) {
 		return
 	}
 
-	var body []byte
-	if httpsReq.Body != nil {
-		body, _ = io.ReadAll(httpsReq.Body)
-		httpsReq.Body.Close()
-	}
+	httpsReq.Host = req.Host
 
-	fullURL := "https://" + req.Host + httpsReq.URL.Path
-	if httpsReq.URL.RawQuery != "" {
-		fullURL += "?" + httpsReq.URL.RawQuery
-	}
-
-	requestData := RequestData{
-		Method:  httpsReq.Method,
-		URL:     fullURL,
-		Headers: httpsReq.Header,
-		Body:    string(body),
-	}
-
-	jsonData, err := json.MarshalIndent(requestData, "", "  ")
-	if err != nil {
-		log.Printf("Error marshaling JSON: %v", err)
-	} else {
-		fmt.Println("===== REQUETE HTTPS =====")
-		fmt.Println(string(jsonData))
-		fmt.Println()
-	}
-
-	proxyReq, err := http.NewRequest(httpsReq.Method, fullURL, bytes.NewReader(body))
-	if err != nil {
-		log.Printf("Erreur création requête: %v", err)
-		return
-	}
-
-	proxyReq.Header = httpsReq.Header.Clone()
-	proxyReq.Header.Del("Proxy-Connection")
-	proxyReq.Header.Del("Connection")
-
-	resp, err := directClient.Do(proxyReq)
-	if err != nil {
-		log.Printf("Erreur envoi requête: %v", err)
-		tlsClientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		return
-	}
-	defer resp.Body.Close()
-
-	log.Printf("Réponse HTTPS: %d %s (Host: %s)", resp.StatusCode, resp.Status, req.Host)
-
-	tlsClientConn.Write([]byte(fmt.Sprintf("HTTP/%d.%d %d %s\r\n",
-		resp.ProtoMajor, resp.ProtoMinor, resp.StatusCode, resp.Status)))
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			tlsClientConn.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, value)))
-		}
-	}
-	tlsClientConn.Write([]byte("\r\n"))
-
-	written, _ := io.Copy(tlsClientConn, resp.Body)
-	log.Printf("Body HTTPS transféré: %d bytes", written)
+	processRequest(tlsClientConn, httpsReq, true)
 }
 
-// handleHTTP handles regular HTTP requests
-func handleHTTP(clientConn net.Conn, req *http.Request) {
-	log.Printf("HTTP Request: %s %s", req.Method, req.URL.String())
-
+// processRequest handles the common logic for both HTTP and HTTPS requests
+func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 	var body []byte
 	if req.Body != nil {
 		body, _ = io.ReadAll(req.Body)
 		req.Body.Close()
 	}
 
-	if req.URL.Scheme == "" {
-		if req.TLS != nil {
-			req.URL.Scheme = "https"
-		} else {
-			req.URL.Scheme = "http"
+	fullURL := req.URL.String()
+	if isHTTPS {
+		fullURL = "https://" + req.Host + req.URL.Path
+		if req.URL.RawQuery != "" {
+			fullURL += "?" + req.URL.RawQuery
 		}
-	}
-	if req.URL.Host == "" {
-		req.URL.Host = req.Host
+	} else {
+		if req.URL.Scheme == "" {
+			if req.TLS != nil {
+				req.URL.Scheme = "https"
+			} else {
+				req.URL.Scheme = "http"
+			}
+		}
+		if req.URL.Host == "" {
+			req.URL.Host = req.Host
+		}
+		fullURL = req.URL.String()
 	}
 
-	if req.URL.String() == "http://localhost:5000/login" {
+	// Check if domain should be filtered
+	host := req.Host
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+	shouldFilter := shouldFilterDomain(host)
+
+	if !shouldFilter {
+		log.Printf("Request: %s %s", req.Method, fullURL)
+	} else {
+		log.Printf("Request: %s %s", req.Method, fullURL)
+	}
+
+	// Specific logic for HTTP login request
+	if !isHTTPS && req.URL.String() == "http://localhost:5000/login" {
 		if req.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 			form, err := url.ParseQuery(string(body))
 			if err == nil {
@@ -196,28 +195,69 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 		}
 	}
 
-	requestData := RequestData{
-		Method:  req.Method,
-		URL:     req.URL.String(),
-		Headers: req.Header,
-		Body:    string(body),
+	if !shouldFilter {
+		requestID := uuid.New().String()
+
+		// Vérifier si la pause est activée via la config
+		cfg := config.GetInstance()
+		status := "passthrough"
+		if cfg.Pause {
+			status = "pending"
+		}
+
+		requestData := websocket.RequestData{
+			ID:      requestID,
+			Method:  req.Method,
+			URL:     fullURL,
+			Headers: req.Header,
+			Body:    string(body),
+			Status:  status,
+		}
+
+		message := websocket.Message{
+			Type: "request",
+			Data: requestData,
+		}
+
+		jsonData, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("Error marshaling JSON: %v", err)
+		} else {
+			websocket.BroadcastChannel <- jsonData
+		}
+
+		if cfg.Pause {
+			// Mode pause activé - attendre une modification
+			modification, hasModification := websocket.WaitForModification(requestID, 30*time.Second)
+
+			if hasModification {
+				switch modification.Action {
+				case "send":
+					if modification.Method != "" {
+						req.Method = modification.Method
+					}
+					if modification.URL != "" {
+						if parsedURL, err := url.Parse(modification.URL); err == nil {
+							req.URL = parsedURL
+							fullURL = modification.URL
+						}
+					}
+					if modification.Body != "" {
+						body = []byte(modification.Body)
+					}
+					for k, v := range modification.Headers {
+						req.Header[k] = v
+					}
+				case "drop":
+					clientConn.Write([]byte("HTTP/1.1 204 No Content\r\n\r\n"))
+					return
+				}
+			}
+		}
+		// Si pause n'est pas activé, la requête continue directement sans attendre
 	}
 
-	message := websocket.Message{
-		Type: "http_request",
-		Data: requestData,
-	}
-
-	jsonData, err := json.MarshalIndent(message, "", "  ")
-	if err != nil {
-		log.Printf("Error marshaling JSON: %v", err)
-	} else {
-		fmt.Println("===== REQUETE HTTP =====")
-		fmt.Println(string(jsonData))
-		websocket.BroadcastChannel <- jsonData
-	}
-
-	proxyReq, err := http.NewRequest(req.Method, req.URL.String(), bytes.NewReader(body))
+	proxyReq, err := http.NewRequest(req.Method, fullURL, bytes.NewReader(body))
 	if err != nil {
 		log.Printf("Erreur lors de la création de la requête: %v", err)
 		clientConn.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n\r\n"))
@@ -236,7 +276,9 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	log.Printf("Réponse: %d %s", resp.StatusCode, resp.Status)
+	if !shouldFilter {
+		log.Printf("Response: %d %s", resp.StatusCode, resp.Status)
+	}
 
 	clientConn.Write([]byte(fmt.Sprintf("HTTP/%d.%d %d %s\r\n",
 		resp.ProtoMajor, resp.ProtoMinor, resp.StatusCode, resp.Status)))
@@ -249,25 +291,29 @@ func handleHTTP(clientConn net.Conn, req *http.Request) {
 	clientConn.Write([]byte("\r\n"))
 
 	written, _ := io.Copy(clientConn, resp.Body)
-	log.Printf("Body transféré: %d bytes", written)
+	if !shouldFilter {
+		log.Printf("Body transféré: %d bytes", written)
+	}
+}
+
+// handleHTTP handles regular HTTP requests
+func handleHTTP(clientConn net.Conn, req *http.Request) {
+	processRequest(clientConn, req, false)
 }
 
 func Start() {
-	if err := cert.InitCA(); err != nil {
-		log.Fatalf("Erreur initialisation CA: %v", err)
-	}
-	log.Println("Certificat CA généré")
-
 	go func() {
-		listener, err := net.Listen("tcp", "127.0.0.1:8181")
+		cfg := config.GetInstance()
+		addr := fmt.Sprintf("127.0.0.1:%d", cfg.ProxyPort)
+
+		listener, err := net.Listen("tcp", addr)
 		if err != nil {
 			log.Fatalf("Erreur lors du démarrage du proxy: %v", err)
 		}
 		defer listener.Close()
 
 		log.Println("Proxy HTTP/HTTPS Interceptor with MITM")
-		log.Println("Proxy démarré sur 127.0.0.1:8181")
-		log.Println("En attente de connexions...")
+		log.Printf("En attente de connexions sur %s...", addr)
 
 		for {
 			conn, err := listener.Accept()

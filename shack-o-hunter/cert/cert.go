@@ -89,12 +89,20 @@ func InitCA() error {
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
+		MaxPathLenZero:        false,
+		MaxPathLen:            2,
 	}
 
 	// Self-sign the CA certificate
 	caBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, &caKey.PublicKey, caKey)
+	if err != nil {
+		return err
+	}
+
+	// Parse the certificate to get a proper x509.Certificate with Raw field set
+	caCert, err = x509.ParseCertificate(caBytes)
 	if err != nil {
 		return err
 	}
@@ -168,9 +176,9 @@ func GenerateCertForHost(host string) (*tls.Certificate, error) {
 		return nil, err
 	}
 
-	// Create tls.Certificate
+	// Create tls.Certificate with full chain (leaf cert + CA cert)
 	tlsCert := &tls.Certificate{
-		Certificate: [][]byte{certBytes},
+		Certificate: [][]byte{certBytes, caCert.Raw},
 		PrivateKey:  certPrivKey,
 	}
 
