@@ -240,7 +240,6 @@ function App() {
                               onClick={foward}
                               variant="text"
                               disabled={readyState !== ReadyState.OPEN}
-                              title="Envoyer toutes les requêtes en attente"
                               sx={{
                                   backgroundColor: 'transparent',
                                   color: '#00FF00',
