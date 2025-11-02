@@ -13,6 +13,8 @@ import {BrowserDialog} from "./dialog.jsx";
 import {grey} from "@mui/material/colors";
 import {useState} from "react";
 import TenorGifButton, {FleeingCloseButton} from "./gif.jsx";
+import musicTrack from './assets/Shack-o-Hunter.mp3';
+
 
 
 function App() {
@@ -21,6 +23,18 @@ function App() {
     const [items, setItems] = React.useState([]);
     const [isPaused, setIsPaused] = React.useState(false);
     const [browserDialogOpen, setBrowserDialogOpen] = React.useState(false);
+    const audioRef = React.useRef(null);
+
+    React.useEffect(() => {
+        audioRef.current = new Audio(musicTrack);
+
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+        };
+    }, []);
 
     React.useEffect(() => {
         if (lastMessage !== null) {
@@ -39,30 +53,38 @@ function App() {
 
     function play() {
         if (readyState === ReadyState.OPEN) {
-            let nb = Math.floor(Math.random() * 10) + 1;
 
-            if (nb % 3 === 0) {
+            setIsPaused(false);
+            sendMessage(JSON.stringify({
+                type: 'pause',
+                data: false
+            }));
 
+            setItems(prevItems =>
+                prevItems.map(item => ({
+                    ...item,
+                    status: item.status === 'pending' ? 'sent' : item.status
+                }))
+            );
+
+
+            if (Math.random() < 0.1 && audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch((err) => {
+                    console.warn('Unable to start music playback:', err);
+                });
                 handleGif();
 
-            } else {
-                setIsPaused(false);
-                sendMessage(JSON.stringify({
-                    type: 'pause',
-                    data: false
-                }));
-
-                setItems(prevItems =>
-                    prevItems.map(item => ({
-                        ...item,
-                        status: item.status === 'pending' ? 'sent' : item.status
-                    }))
-                );
             }
         }
     }
 
     function pause() {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+
         if (readyState === ReadyState.OPEN) {
             setIsPaused(true);
             sendMessage(JSON.stringify({
