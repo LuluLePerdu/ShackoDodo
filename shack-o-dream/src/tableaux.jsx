@@ -8,6 +8,9 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import EditDrawer from "./editDrawer.jsx";
+import DeleteIcon from '@mui/icons-material/Delete';
+import IconButton from '@mui/material/IconButton';
+
 
 const columns = [
     { id: 'id', label: 'ID', minWidth: 75 },
@@ -41,7 +44,7 @@ const rows = [
     createData('Brazil', 'BR', 210147125, 8515767),
 ];
 
-export default function StickyHeadTable({items}) {
+export default function StickyHeadTable({items, handleDeleteItem}) {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [selectedRow, setSelectedRow] = React.useState(null);
@@ -69,7 +72,7 @@ export default function StickyHeadTable({items}) {
 
     return (
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ maxHeight: 440,
+            <TableContainer sx={{ maxHeight: '70vh',
                 overflowX: 'auto',
                 transition: 'transform 0.5s ease',
                 transform: drawerOpen
@@ -89,6 +92,7 @@ export default function StickyHeadTable({items}) {
                                     {column.label}
                                 </TableCell>
                             ))}
+                            <TableCell></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -96,17 +100,18 @@ export default function StickyHeadTable({items}) {
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((row) => {
                                 return (
-                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id} onClick={() => handleRowClick(row)}>
+                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id} >
                                         {columns.map((column) => {
                                             const value = row[column.id];
                                             return (
-                                                <TableCell key={column.id} align={column.align}>
+                                                <TableCell key={column.id} align={column.align} onClick={() => handleRowClick(row)}>
                                                     {column.format && typeof value === 'number'
                                                         ? column.format(value)
                                                         : value}
                                                 </TableCell>
                                             );
                                         })}
+                                        <TableCell><IconButton onClick={() => handleDeleteItem(row.id)}><DeleteIcon/></IconButton></TableCell>
                                     </TableRow>
                                 );
                             })}
