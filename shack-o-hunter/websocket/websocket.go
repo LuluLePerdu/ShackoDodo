@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"proxy-interceptor/config"
+	"proxy-interceptor/shared"
 
 	"github.com/gorilla/websocket"
 )
@@ -46,6 +47,7 @@ var upgrader = websocket.Upgrader{
 }
 
 var BroadcastChannel = make(chan []byte)
+var RequestChannel = make(chan shared.RequestData)
 
 func (h *Hub) run() {
 	for {
@@ -84,7 +86,7 @@ func (c *Client) readPump() {
 			break
 		}
 
-		var msg Message
+		var msg shared.Message
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Printf("error unmarshalling message: %v", err)
 			continue
@@ -98,6 +100,19 @@ func (c *Client) readPump() {
 			} else {
 				log.Printf("Invalid data for pause type: %v", msg.Data)
 			}
+		case "http-request":
+			var requestData shared.RequestData
+			dataBytes, err := json.Marshal(msg.Data)
+			if err != nil {
+				log.Printf("error marshaling http-request data: %v", err)
+				continue
+			}
+			if err := json.Unmarshal(dataBytes, &requestData); err != nil {
+				log.Printf("error unmarshaling http-request data: %v", err)
+				continue
+			}
+			log.Printf("Received http-request via websocket: %+v", requestData)
+			RequestChannel <- requestData
 		}
 	}
 }

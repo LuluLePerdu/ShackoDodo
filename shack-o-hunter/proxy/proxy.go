@@ -10,20 +10,13 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"proxy-interceptor/cert"
 	"proxy-interceptor/config"
+	"proxy-interceptor/shared"
 	"proxy-interceptor/websocket"
 	"strings"
 	"time"
 )
-
-type RequestData struct {
-	Method  string              `json:"method"`
-	URL     string              `json:"url"`
-	Headers map[string][]string `json:"headers"`
-	Body    string              `json:"body"`
-}
 
 var directClient = &http.Client{
 	Transport: &http.Transport{
@@ -187,30 +180,15 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 		}
 	}
 
-	// Specific logic for HTTP login request
-	if !isHTTPS && req.URL.String() == "http://localhost:5000/login" {
-		if req.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
-			form, err := url.ParseQuery(string(body))
-			if err == nil {
-				if form.Has("username") && form.Has("password") {
-					time.Sleep(3 * time.Second)
-					form.Set("username", "admin")
-					form.Set("password", "password123")
-					body = []byte(form.Encode())
-				}
-			}
-		}
-	}
-
 	if !shouldFilter {
-		requestData := RequestData{
+		requestData := shared.RequestData{
 			Method:  req.Method,
 			URL:     fullURL,
 			Headers: req.Header,
 			Body:    string(body),
 		}
 
-		message := websocket.Message{
+		message := shared.Message{
 			Type: "http_request",
 			Data: requestData,
 		}
@@ -226,6 +204,20 @@ func processRequest(clientConn net.Conn, req *http.Request, isHTTPS bool) {
 			}
 			fmt.Println(string(jsonData))
 			websocket.BroadcastChannel <- jsonData
+
+			edited := false
+			if config.GetInstance().Pause && !edited {
+				log.Println("Proxy is paused. Waiting for http-request from websocket...")
+				newRequestData := <-websocket.RequestChannel
+				log.Println("Resuming with new request data.")
+
+				req.Method = newRequestData.Method
+				fullURL = newRequestData.URL
+				body = []byte(newRequestData.Body)
+				req.Header = newRequestData.Headers
+
+				edited = true
+			}
 		}
 	}
 
